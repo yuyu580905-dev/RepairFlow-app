@@ -35,6 +35,11 @@
                 ここに修理依頼や担当業務の情報を表示していきます。
             </p>
 
+            <a href="{{ route('repair-requests.index') }}" class="mt-6 inline-block rounded-lg bg-slate-800 px-5 py-3
+                font-semibold text-white transition hover:bg-slate-700">
+                修理依頼一覧を見る
+            </a>
+
             @if (session('status'))
                 <div class="mt-6 rounded-lg bg-green-50 p-4 text-sm text-green-700">
                     {{ session('status') }}
@@ -43,7 +48,7 @@
 
             @if (auth()->user()->role === 'requester')
                 <a href="{{ route('repair-requests.create') }}" class="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-3
-                            font-semibold text-white transition hover:bg-blue-700">
+                                        font-semibold text-white transition hover:bg-blue-700">
                     修理依頼を登録する
                 </a>
             @endif

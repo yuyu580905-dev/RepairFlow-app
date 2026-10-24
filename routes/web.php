@@ -1,4 +1,3 @@
-
 <?php
 
 use App\Http\Controllers\RepairRequestController;
@@ -11,7 +10,23 @@ Route::view('/dashboard', 'dashboard')
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/repair-requests/create', [RepairRequestController::class, 'create'])->name('repair-requests.create');
+    Route::get('/repair-requests', [
+        RepairRequestController::class,
+        'index',
+    ])->name('repair-requests.index');
 
-    Route::post('/repair-requests', [RepairRequestController::class, 'store'])->name('repair-requests.store');
+    Route::get('/repair-requests/create', [
+        RepairRequestController::class,
+        'create',
+    ])->name('repair-requests.create');
+
+    Route::post('/repair-requests', [
+        RepairRequestController::class,
+        'store',
+    ])->name('repair-requests.store');
+
+    Route::get('/repair-requests/{repairRequest}', [
+        RepairRequestController::class,
+        'show',
+    ])->name('repair-requests.show');
 });
