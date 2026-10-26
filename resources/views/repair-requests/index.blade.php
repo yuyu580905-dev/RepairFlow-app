@@ -34,7 +34,7 @@
 
             @if (auth()->user()->role === 'requester')
                 <a href="{{ route('repair-requests.create') }}" class="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-3
-                            font-semibold text-white hover:bg-blue-700">
+                                font-semibold text-white hover:bg-blue-700">
                     修理依頼を登録する
                 </a>
             @endif
@@ -83,6 +83,9 @@
                                                         {{ match ($repairRequest->status) {
                                 'received' => '受付済み',
                                 'in_progress' => '対応中',
+                                'on_hold' => '保留中',
+                                'completed' => '完了',
+                                'cancelled' => 'キャンセル済み',
                                 default => $repairRequest->status,
                             } }}
                                                     </td>

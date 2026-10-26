@@ -29,4 +29,14 @@ Route::middleware('auth')->group(function () {
         RepairRequestController::class,
         'show',
     ])->name('repair-requests.show');
+
+    Route::patch('/repair-requests/{repairRequest}/technician', [
+        RepairRequestController::class,
+        'assignTechnician',
+    ])->name('repair-requests.assign-technician');
+
+    Route::patch('/repair-requests/{repairRequest}/status', [
+        RepairRequestController::class,
+        'updateStatus',
+    ])->name('repair-requests.update-status');
 });

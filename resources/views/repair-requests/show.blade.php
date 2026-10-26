@@ -23,10 +23,30 @@
                 依頼番号：{{ $repairRequest->id }}
             </p>
 
+            @if (session('status'))
+                <div class="mt-6 rounded-lg bg-green-50 p-4 text-sm font-medium text-green-800" role="status">
+                    {{ session('status') }}
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="mt-6 rounded-lg bg-red-50 p-4 text-sm text-red-800" role="alert">
+                    <p class="font-semibold">入力内容を確認してください。</p>
+
+                    <ul class="mt-2 list-inside list-disc">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <div class="mt-8 border-t border-slate-200">
                 <dl class="divide-y divide-slate-100">
                     <div class="py-4 sm:flex">
-                        <dt class="font-semibold text-slate-600 sm:w-40">件名</dt>
+                        <dt class="font-semibold text-slate-600 sm:w-40">
+                            件名
+                        </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
                             {{ $repairRequest->title }}
                         </dd>
@@ -38,21 +58,27 @@
                     </div>
 
                     <div class="py-4 sm:flex">
-                        <dt class="font-semibold text-slate-600 sm:w-40">発生場所</dt>
+                        <dt class="font-semibold text-slate-600 sm:w-40">
+                            発生場所
+                        </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
                             {{ $repairRequest->location }}
                         </dd>
                     </div>
 
                     <div class="py-4 sm:flex">
-                        <dt class="font-semibold text-slate-600 sm:w-40">対象設備</dt>
+                        <dt class="font-semibold text-slate-600 sm:w-40">
+                            対象設備
+                        </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
                             {{ $repairRequest->asset_name }}
                         </dd>
                     </div>
 
                     <div class="py-4 sm:flex">
-                        <dt class="font-semibold text-slate-600 sm:w-40">優先度</dt>
+                        <dt class="font-semibold text-slate-600 sm:w-40">
+                            優先度
+                        </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
                             {{ match ($repairRequest->priority) {
     'low' => '低',
@@ -64,39 +90,52 @@
                     </div>
 
                     <div class="py-4 sm:flex">
-                        <dt class="font-semibold text-slate-600 sm:w-40">ステータス</dt>
+                        <dt class="font-semibold text-slate-600 sm:w-40">
+                            ステータス
+                        </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
                             {{ match ($repairRequest->status) {
     'received' => '受付済み',
     'in_progress' => '対応中',
+    'on_hold' => '保留中',
+    'completed' => '完了',
+    'cancelled' => 'キャンセル済み',
     default => $repairRequest->status,
 } }}
                         </dd>
                     </div>
 
                     <div class="py-4 sm:flex">
-                        <dt class="font-semibold text-slate-600 sm:w-40">依頼者</dt>
+                        <dt class="font-semibold text-slate-600 sm:w-40">
+                            依頼者
+                        </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
                             {{ $repairRequest->requester->name }}
                         </dd>
                     </div>
 
                     <div class="py-4 sm:flex">
-                        <dt class="font-semibold text-slate-600 sm:w-40">担当技術者</dt>
+                        <dt class="font-semibold text-slate-600 sm:w-40">
+                            担当技術者
+                        </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
                             {{ $repairRequest->assignedTechnician?->name ?? '未割り当て' }}
                         </dd>
                     </div>
 
                     <div class="py-4 sm:flex">
-                        <dt class="font-semibold text-slate-600 sm:w-40">登録日時</dt>
+                        <dt class="font-semibold text-slate-600 sm:w-40">
+                            登録日時
+                        </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
                             {{ $repairRequest->created_at->format('Y/m/d H:i') }}
                         </dd>
                     </div>
 
                     <div class="py-4 sm:flex">
-                        <dt class="font-semibold text-slate-600 sm:w-40">最終更新日時</dt>
+                        <dt class="font-semibold text-slate-600 sm:w-40">
+                            最終更新日時
+                        </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
                             {{ $repairRequest->updated_at->format('Y/m/d H:i') }}
                         </dd>
@@ -104,14 +143,196 @@
                 </dl>
             </div>
 
+            @if (auth()->user()->role === 'admin')
+                <section class="mt-10 border-t border-slate-200 pt-8">
+                    <h2 class="text-xl font-bold text-slate-900">
+                        担当技術者の割り当て
+                    </h2>
+
+                    <form action="{{ route('repair-requests.assign-technician', $repairRequest) }}" method="POST"
+                        class="mt-5 space-y-4" novalidate>
+                        @csrf
+                        @method('PATCH')
+
+                        <div>
+                            <label for="assigned_to" class="block text-sm font-semibold text-slate-700">
+                                担当技術者
+                            </label>
+
+                            <select id="assigned_to" name="assigned_to" required
+                                class="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-4 py-3">
+                                <option value="">技術者を選択してください</option>
+
+                                @foreach ($technicians as $technician)
+                                    <option value="{{ $technician->id }}" @selected(
+                                        (string) old('assigned_to', $repairRequest->assigned_to)
+                                        === (string) $technician->id
+                                    )>
+                                        {{ $technician->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <button type="submit"
+                            class="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
+                            担当技術者を割り当てる
+                        </button>
+                    </form>
+                </section>
+            @endif
+
+            @if (
+                    auth()->user()->role === 'technician'
+                    && (int) $repairRequest->assigned_to === (int) auth()->id()
+                    && in_array($repairRequest->status, ['received', 'in_progress', 'on_hold'], true)
+                )
+                <section class="mt-10 border-t border-slate-200 pt-8">
+                    <h2 class="text-xl font-bold text-slate-900">
+                        ステータスを更新
+                    </h2>
+
+                    @php
+                        $allowedStatuses = match ($repairRequest->status) {
+                            'received' => [
+                                'in_progress' => '対応中',
+                                'on_hold' => '保留中',
+                            ],
+                            'in_progress' => [
+                                'on_hold' => '保留中',
+                                'completed' => '完了',
+                            ],
+                            'on_hold' => [
+                                'in_progress' => '対応中',
+                            ],
+                            default => [],
+                        };
+                    @endphp
+
+                    <form action="{{ route('repair-requests.update-status', $repairRequest) }}" method="POST"
+                        class="mt-5 space-y-4" x-data="{ selectedStatus: '{{ old('status', '') }}' }" novalidate>
+                        @csrf
+                        @method('PATCH')
+
+                        <div>
+                            <label for="status" class="block text-sm font-semibold text-slate-700">
+                                変更後のステータス
+                            </label>
+
+                            <select id="status" name="status" required x-model="selectedStatus"
+                                class="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-4 py-3">
+                                <option value="">ステータスを選択してください</option>
+
+                                @foreach ($allowedStatuses as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('status') === $value)>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="message" class="block text-sm font-semibold text-slate-700">
+                                <span x-show="selectedStatus === 'on_hold'" x-cloak>
+                                    保留理由 <span class="text-red-600">必須</span>
+                                </span>
+
+                                <span x-show="selectedStatus !== 'on_hold'" x-cloak>
+                                    作業メッセージ（任意）
+                                </span>
+                            </label>
+
+                            <textarea id="message" name="message" rows="4" maxlength="2000"
+                                :required="selectedStatus === 'on_hold'"
+                                class="mt-2 block w-full rounded-lg border border-slate-300 px-4 py-3" :placeholder="selectedStatus === 'on_hold'
+                                                        ? '例：交換部品の到着待ち、追加情報の確認中など'
+                                                        : '作業内容や引き継ぎ事項など'">{{ old('message') }}</textarea>
+
+                            @error('message')
+                                <p class="mt-1 text-sm text-red-600">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <button type="submit"
+                            class="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
+                            ステータスを更新する
+                        </button>
+                    </form>
+                </section>
+            @endif
+
+            <section class="mt-10 border-t border-slate-200 pt-8">
+                <h2 class="text-xl font-bold text-slate-900">
+                    修理履歴
+                </h2>
+
+                @if ($repairRequest->repairLogs->isEmpty())
+                    <p class="mt-4 rounded-lg bg-slate-50 p-5 text-sm text-slate-500">
+                        まだ修理履歴はありません。
+                    </p>
+                @else
+                    <ol class="mt-6 space-y-5">
+                        @foreach ($repairRequest->repairLogs->sortByDesc('created_at') as $log)
+                                        <li class="border-l-2 border-blue-200 pl-4">
+                                            <p class="font-semibold text-slate-900">
+                                                {{ match ($log->action) {
+                                'technician_assigned' => '担当技術者を割り当て',
+                                'status_changed' => 'ステータス変更',
+                                default => $log->action,
+                            } }}
+                                            </p>
+
+                                            @if ($log->from_status || $log->to_status)
+                                                            <p class="mt-1 text-sm text-slate-600">
+                                                                {{ match ($log->from_status) {
+                                                    'received' => '受付済み',
+                                                    'in_progress' => '対応中',
+                                                    'on_hold' => '保留中',
+                                                    'completed' => '完了',
+                                                    'cancelled' => 'キャンセル済み',
+                                                    default => $log->from_status,
+                                                } }}
+                                                                →
+                                                                {{ match ($log->to_status) {
+                                                    'received' => '受付済み',
+                                                    'in_progress' => '対応中',
+                                                    'on_hold' => '保留中',
+                                                    'completed' => '完了',
+                                                    'cancelled' => 'キャンセル済み',
+                                                    default => $log->to_status,
+                                                } }}
+                                                            </p>
+                                            @endif
+
+                                            <p class="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+                                                {{ $log->message }}
+                                            </p>
+
+                                            <p class="mt-2 text-xs text-slate-500">
+                                                記録者：{{ $log->user?->name ?? '不明' }}
+                                                ／
+                                                {{ $log->created_at
+                                ? \Illuminate\Support\Carbon::parse($log->created_at, 'UTC')
+                                    ->setTimezone(config('app.timezone'))
+                                    ->format('Y/m/d H:i')
+                                : '日時不明' }}
+                                            </p>
+                                        </li>
+                        @endforeach
+                    </ol>
+                @endif
+            </section>
+
             <div class="mt-8 flex flex-wrap gap-3">
-                <a href="{{ route('repair-requests.index') }}" class="rounded-lg bg-blue-600 px-5 py-3 font-semibold
-                    text-white hover:bg-blue-700">
+                <a href="{{ route('repair-requests.index') }}"
+                    class="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
                     一覧へ戻る
                 </a>
 
-                <a href="{{ route('dashboard') }}" class="rounded-lg bg-slate-200 px-5 py-3 font-semibold
-                    text-slate-700 hover:bg-slate-300">
+                <a href="{{ route('dashboard') }}"
+                    class="rounded-lg bg-slate-200 px-5 py-3 font-semibold text-slate-700 hover:bg-slate-300">
                     ダッシュボードへ戻る
                 </a>
             </div>
