@@ -18,6 +18,15 @@ class RepairLog extends Model
     public $timestamps = false;
 
     /**
+     * 属性の型変換設定。
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'created_at' => 'datetime',
+    ];
+
+    /**
      * 一括代入可能な属性。
      *
      * @var array<int, string>

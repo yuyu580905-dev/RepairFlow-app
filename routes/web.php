@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CancellationRequestController;
 use App\Http\Controllers\RepairRequestController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,4 +40,14 @@ Route::middleware('auth')->group(function () {
         RepairRequestController::class,
         'updateStatus',
     ])->name('repair-requests.update-status');
+
+    Route::post(
+        '/repair-requests/{repairRequest}/cancellation-requests',
+        [CancellationRequestController::class, 'store']
+    )->name('repair-requests.cancellation-requests.store');
+
+    Route::post(
+        '/cancellation-requests/{cancellationRequest}/review',
+        [CancellationRequestController::class, 'review']
+    )->name('cancellation-requests.review');
 });

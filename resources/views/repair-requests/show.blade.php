@@ -23,6 +23,12 @@
                 依頼番号：{{ $repairRequest->id }}
             </p>
 
+            @if (session('success'))
+                <div class="mt-6 rounded-lg bg-green-50 p-4 text-sm font-medium text-green-800" role="status">
+                    {{ session('success') }}
+                </div>
+            @endif
+
             @if (session('status'))
                 <div class="mt-6 rounded-lg bg-green-50 p-4 text-sm font-medium text-green-800" role="status">
                     {{ session('status') }}
@@ -128,7 +134,7 @@
                             登録日時
                         </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
-                            {{ $repairRequest->created_at->format('Y/m/d H:i') }}
+                            {{ $repairRequest->created_at->copy()->setTimezone('Asia/Tokyo')->format('Y/m/d H:i') }}
                         </dd>
                     </div>
 
@@ -137,7 +143,7 @@
                             最終更新日時
                         </dt>
                         <dd class="mt-1 sm:mt-0 sm:flex-1">
-                            {{ $repairRequest->updated_at->format('Y/m/d H:i') }}
+                            {{ $repairRequest->updated_at->copy()->setTimezone('Asia/Tokyo')->format('Y/m/d H:i') }}
                         </dd>
                     </div>
                 </dl>
@@ -165,9 +171,9 @@
 
                                 @foreach ($technicians as $technician)
                                     <option value="{{ $technician->id }}" @selected(
-                                        (string) old('assigned_to', $repairRequest->assigned_to)
-                                        === (string) $technician->id
-                                    )>
+            (string) old('assigned_to', $repairRequest->assigned_to)
+            === (string) $technician->id
+        )>
                                         {{ $technician->name }}
                                     </option>
                                 @endforeach
@@ -182,31 +188,274 @@
                 </section>
             @endif
 
+@if (auth()->user()->role === 'admin')
+    <section class="mt-10 border-t border-slate-200 pt-8">
+        <h2 class="text-xl font-bold text-slate-900">
+            キャンセル申請の審査
+        </h2>
+
+        @php
+    $pendingCancellationRequests = $repairRequest->cancellationRequests
+        ->where('status', 'pending');
+        @endphp
+
+        @if ($pendingCancellationRequests->isEmpty())
+            <p class="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
+                現在、審査中のキャンセル申請はありません。
+            </p>
+        @else
+            <div class="mt-5 space-y-6">
+                @foreach ($pendingCancellationRequests as $cancellationRequest)
+                    <article class="rounded-xl border border-slate-200 p-5">
+                        <dl class="space-y-3">
+                            <div>
+                                <dt class="text-sm font-semibold text-slate-600">
+                                    申請者
+                                </dt>
+                                <dd class="mt-1">
+                                    {{ $cancellationRequest->requester->name }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt class="text-sm font-semibold text-slate-600">
+                                    申請日時
+                                </dt>
+                                <dd class="mt-1">
+                                    {{ $cancellationRequest->created_at->copy()->setTimezone('Asia/Tokyo')->format('Y/m/d H:i') }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt class="text-sm font-semibold text-slate-600">
+                                    キャンセル理由
+                                </dt>
+                                <dd class="mt-1 whitespace-pre-wrap">{{ $cancellationRequest->reason }}</dd>
+                            </div>
+                        </dl>
+
+                        <form action="{{ route('cancellation-requests.review', $cancellationRequest) }}" method="POST"
+                            class="mt-6 space-y-4">
+                            @csrf
+
+                            <div>
+                                <label for="decision-{{ $cancellationRequest->id }}"
+                                    class="block text-sm font-semibold text-slate-700">
+                                    審査結果
+                                </label>
+
+                                <select id="decision-{{ $cancellationRequest->id }}" name="decision" required
+                                    class="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-4 py-3">
+                                    <option value="">審査結果を選択してください</option>
+                                    <option value="approved">承認する</option>
+                                    <option value="rejected">却下する</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="review_comment-{{ $cancellationRequest->id }}"
+                                    class="block text-sm font-semibold text-slate-700">
+                                    審査コメント（任意）
+                                </label>
+
+                                <textarea id="review_comment-{{ $cancellationRequest->id }}" name="review_comment" rows="3"
+                                    maxlength="2000" class="mt-2 block w-full rounded-lg border border-slate-300 px-4 py-3"
+                                    placeholder="審査理由や依頼者への補足を入力してください"></textarea>
+                            </div>
+
+                            <button type="submit"
+                                class="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
+                                審査結果を確定する
+                            </button>
+                        </form>
+                    </article>
+                @endforeach
+            </div>
+        @endif
+    </section>
+@endif
+
+@if (in_array(auth()->user()->role, ['requester', 'admin'], true))
+    @php
+    $visibleCancellationRequests = auth()->user()->role === 'admin'
+        ? $repairRequest->cancellationRequests
+        : $repairRequest->cancellationRequests->where(
+            'requester_id',
+            auth()->id()
+        );
+    @endphp
+
+    <section class="mt-10 border-t border-slate-200 pt-8">
+        <h2 class="text-xl font-bold text-slate-900">
+            キャンセル申請履歴
+        </h2>
+
+        @if ($visibleCancellationRequests->isEmpty())
+            <p class="mt-4 rounded-lg bg-slate-50 p-5 text-sm text-slate-500">
+                キャンセル申請履歴はありません。
+            </p>
+        @else
+            <ol class="mt-5 space-y-5">
+                @foreach ($visibleCancellationRequests->sortByDesc('created_at') as $cancellationRequest)
+                                    <li class="rounded-xl border border-slate-200 p-5">
+                                        <div class="flex flex-wrap items-center justify-between gap-3">
+                                            <h3 class="font-semibold text-slate-900">
+                                                キャンセル申請 #{{ $cancellationRequest->id }}
+                                            </h3>
+
+                                            <span @class([
+                'rounded-full px-3 py-1 text-sm font-semibold',
+                'bg-amber-100 text-amber-800' => $cancellationRequest->status === 'pending',
+                'bg-green-100 text-green-800' => $cancellationRequest->status === 'approved',
+                'bg-red-100 text-red-800' => $cancellationRequest->status === 'rejected',
+            ])>
+                                                {{ match ($cancellationRequest->status) {
+                'pending' => '審査中',
+                'approved' => '承認',
+                'rejected' => '却下',
+                default => $cancellationRequest->status,
+            } }}
+                                            </span>
+                                        </div>
+
+                                        @if (auth()->user()->role === 'admin')
+                                            <p class="mt-3 text-sm text-slate-600">
+                                                申請者：{{ $cancellationRequest->requester->name }}
+                                            </p>
+                                        @endif
+
+                                        <p class="mt-2 text-sm text-slate-600">
+                                            申請日時：
+                                            {{ $cancellationRequest->created_at
+                ? $cancellationRequest->created_at->copy()
+                    ->setTimezone('Asia/Tokyo')
+                    ->format('Y/m/d H:i')
+                : '日時不明' }}
+                                        </p>
+
+                                        <div class="mt-4">
+                                            <h4 class="text-sm font-semibold text-slate-700">
+                                                キャンセル理由
+                                            </h4>
+
+                                            <p class="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{{ $cancellationRequest->reason }}</p>
+                                        </div>
+
+                                        @if ($cancellationRequest->reviewed_at)
+                                                            <div class="mt-4 border-t border-slate-100 pt-4">
+                                                                <h4 class="text-sm font-semibold text-slate-700">
+                                                                    審査情報
+                                                                </h4>
+
+                                                                <p class="mt-2 text-sm text-slate-600">
+                                                                    審査担当者：{{ $cancellationRequest->reviewer?->name ?? '不明' }}
+                                                                </p>
+
+                                                                <p class="mt-1 text-sm text-slate-600">
+                                                                    審査日時：
+                                                                    {{ \Illuminate\Support\Carbon::parse($cancellationRequest->reviewed_at, 'UTC')
+                    ->setTimezone('Asia/Tokyo')
+                    ->format('Y/m/d H:i') }}
+                                                                </p>
+
+                                                                @if ($cancellationRequest->review_comment)
+                                                                    <div class="mt-3">
+                                                                        <h4 class="text-sm font-semibold text-slate-700">
+                                                                            審査コメント
+                                                                        </h4>
+
+                                                                        <p class="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{{ $cancellationRequest->review_comment }}</p>
+                                                                    </div>
+                                                                @else
+                                                                    <p class="mt-3 text-sm text-slate-500">
+                                                                        審査コメントはありません。
+                                                                    </p>
+                                                                @endif
+                                                            </div>
+                                        @endif
+                                    </li>
+                @endforeach
+            </ol>
+        @endif
+    </section>
+@endif
+
             @if (
-                    auth()->user()->role === 'technician'
-                    && (int) $repairRequest->assigned_to === (int) auth()->id()
-                    && in_array($repairRequest->status, ['received', 'in_progress', 'on_hold'], true)
-                )
+    auth()->user()->role === 'requester'
+    && auth()->user()->is_active
+    && (int) $repairRequest->requester_id === (int) auth()->id()
+    && $repairRequest->status === 'received'
+)
+                    <section class="mt-10 border-t border-slate-200 pt-8">
+                        <h2 class="text-xl font-bold text-slate-900">
+                            キャンセル申請
+                        </h2>
+
+                        @if ($repairRequest->cancellationRequests->contains('status', 'pending'))
+                            <p class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
+                                この修理依頼には審査中のキャンセル申請があります。
+                                管理者の審査をお待ちください。
+                            </p>
+                        @else
+                            <p class="mt-3 text-sm leading-6 text-slate-600">
+                                この修理依頼のキャンセルを希望する場合は、理由を入力して申請してください。
+                                申請後、管理者が内容を確認して承認または却下します。
+                            </p>
+
+                            <form action="{{ route('repair-requests.cancellation-requests.store', $repairRequest) }}" method="POST"
+                                class="mt-5 space-y-4" novalidate>
+                                @csrf
+
+                                <div>
+                                    <label for="reason" class="block text-sm font-semibold text-slate-700">
+                                        キャンセル理由
+                                        <span class="text-red-600">必須</span>
+                                    </label>
+
+                                    <textarea id="reason" name="reason" rows="4" maxlength="2000" required
+                                        class="mt-2 block w-full rounded-lg border border-slate-300 px-4 py-3"
+                                        placeholder="キャンセルを希望する理由を入力してください">{{ old('reason') }}</textarea>
+
+                                    @error('reason')
+                                        <p class="mt-1 text-sm text-red-600">
+                                            {{ $message }}
+                                        </p>
+                                    @enderror
+                                </div>
+
+                                <button type="submit" class="rounded-lg bg-red-600 px-5 py-3 font-semibold text-white hover:bg-red-700">
+                                    キャンセルを申請する
+                                </button>
+                            </form>
+                        @endif
+                    </section>
+            @endif
+
+            @if (
+    auth()->user()->role === 'technician'
+    && (int) $repairRequest->assigned_to === (int) auth()->id()
+    && in_array($repairRequest->status, ['received', 'in_progress', 'on_hold'], true)
+)
                 <section class="mt-10 border-t border-slate-200 pt-8">
                     <h2 class="text-xl font-bold text-slate-900">
                         ステータスを更新
                     </h2>
 
                     @php
-                        $allowedStatuses = match ($repairRequest->status) {
-                            'received' => [
-                                'in_progress' => '対応中',
-                                'on_hold' => '保留中',
-                            ],
-                            'in_progress' => [
-                                'on_hold' => '保留中',
-                                'completed' => '完了',
-                            ],
-                            'on_hold' => [
-                                'in_progress' => '対応中',
-                            ],
-                            default => [],
-                        };
+    $allowedStatuses = match ($repairRequest->status) {
+        'received' => [
+            'in_progress' => '対応中',
+            'on_hold' => '保留中',
+        ],
+        'in_progress' => [
+            'on_hold' => '保留中',
+            'completed' => '完了',
+        ],
+        'on_hold' => [
+            'in_progress' => '対応中',
+        ],
+        default => [],
+    };
                     @endphp
 
                     <form action="{{ route('repair-requests.update-status', $repairRequest) }}" method="POST"
@@ -275,51 +524,54 @@
                 @else
                     <ol class="mt-6 space-y-5">
                         @foreach ($repairRequest->repairLogs->sortByDesc('created_at') as $log)
-                                        <li class="border-l-2 border-blue-200 pl-4">
-                                            <p class="font-semibold text-slate-900">
-                                                {{ match ($log->action) {
+                                                            <li class="border-l-2 border-blue-200 pl-4">
+                                                                <p class="font-semibold text-slate-900">
+                                                                    {{ match ($log->action) {
                                 'technician_assigned' => '担当技術者を割り当て',
                                 'status_changed' => 'ステータス変更',
+                                'cancellation_requested' => 'キャンセル申請',
+                                'cancellation_approved' => 'キャンセル申請を承認',
+                                'cancellation_rejected' => 'キャンセル申請を却下',
                                 default => $log->action,
                             } }}
-                                            </p>
+                                                                </p>
 
-                                            @if ($log->from_status || $log->to_status)
-                                                            <p class="mt-1 text-sm text-slate-600">
-                                                                {{ match ($log->from_status) {
-                                                    'received' => '受付済み',
-                                                    'in_progress' => '対応中',
-                                                    'on_hold' => '保留中',
-                                                    'completed' => '完了',
-                                                    'cancelled' => 'キャンセル済み',
-                                                    default => $log->from_status,
-                                                } }}
-                                                                →
-                                                                {{ match ($log->to_status) {
-                                                    'received' => '受付済み',
-                                                    'in_progress' => '対応中',
-                                                    'on_hold' => '保留中',
-                                                    'completed' => '完了',
-                                                    'cancelled' => 'キャンセル済み',
-                                                    default => $log->to_status,
-                                                } }}
-                                                            </p>
-                                            @endif
+                                                                @if ($log->from_status || $log->to_status)
+                                                                                <p class="mt-1 text-sm text-slate-600">
+                                                                                    {{ match ($log->from_status) {
+                                    'received' => '受付済み',
+                                    'in_progress' => '対応中',
+                                    'on_hold' => '保留中',
+                                    'completed' => '完了',
+                                    'cancelled' => 'キャンセル済み',
+                                    default => $log->from_status,
+                                } }}
+                                                                                    →
+                                                                                    {{ match ($log->to_status) {
+                                    'received' => '受付済み',
+                                    'in_progress' => '対応中',
+                                    'on_hold' => '保留中',
+                                    'completed' => '完了',
+                                    'cancelled' => 'キャンセル済み',
+                                    default => $log->to_status,
+                                } }}
+                                                                                </p>
+                                                                @endif
 
-                                            <p class="mt-2 whitespace-pre-wrap text-sm text-slate-700">
-                                                {{ $log->message }}
-                                            </p>
+                                                                <p class="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+                                                                    {{ $log->message }}
+                                                                </p>
 
-                                            <p class="mt-2 text-xs text-slate-500">
-                                                記録者：{{ $log->user?->name ?? '不明' }}
-                                                ／
-                                                {{ $log->created_at
-                                ? \Illuminate\Support\Carbon::parse($log->created_at, 'UTC')
-                                    ->setTimezone(config('app.timezone'))
+                                                                <p class="mt-2 text-xs text-slate-500">
+                                                                    記録者：{{ $log->user?->name ?? '不明' }}
+                                                                    ／
+                                                                    {{ $log->created_at
+                                ? $log->created_at->copy()
+                                    ->setTimezone('Asia/Tokyo')
                                     ->format('Y/m/d H:i')
                                 : '日時不明' }}
-                                            </p>
-                                        </li>
+                                                                </p>
+                                                            </li>
                         @endforeach
                     </ol>
                 @endif
