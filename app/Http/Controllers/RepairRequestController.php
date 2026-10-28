@@ -68,6 +68,8 @@ class RepairRequestController extends Controller
             'requester',
             'assignedTechnician',
             'repairLogs.user',
+            'cancellationRequests.requester',
+            'cancellationRequests.reviewer',
         ]);
 
         $technicians = User::query()
