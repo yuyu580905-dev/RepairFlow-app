@@ -98,11 +98,26 @@ class RepairRequestController extends Controller
     public function store(
         StoreRepairRequestRequest $request
     ): RedirectResponse {
-        $request->user()->repairRequests()->create([
-            ...$request->validated(),
-            'assigned_to' => null,
-            'status' => 'received',
-        ]);
+        $user = $request->user();
+
+        abort_unless($user !== null, 403);
+
+        DB::transaction(function () use ($request, $user): void {
+            $repairRequest = $user->repairRequests()->create([
+                ...$request->validated(),
+                'assigned_to' => null,
+                'status' => 'received',
+            ]);
+
+            RepairLog::create([
+                'repair_request_id' => $repairRequest->id,
+                'user_id' => $user->id,
+                'action' => 'request_created',
+                'message' => '修理依頼を登録しました。',
+                'from_status' => null,
+                'to_status' => 'received',
+            ]);
+        });
 
         return redirect()
             ->route('dashboard')

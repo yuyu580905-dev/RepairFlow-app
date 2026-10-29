@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\RepairRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -44,6 +45,18 @@ class RepairRequestStoreTest extends TestCase
             'status' => 'received',
             'assigned_to' => null,
         ]);
+
+        $this->assertDatabaseHas('repair_logs', [
+            'repair_request_id' => RepairRequest::query()
+                ->where('requester_id', $user->id)
+                ->where('title', '空調設備の故障')
+                ->value('id'),
+            'user_id' => $user->id,
+            'action' => 'request_created',
+            'message' => '修理依頼を登録しました。',
+            'from_status' => null,
+            'to_status' => 'received',
+        ]);
     }
 
     /**
@@ -75,6 +88,7 @@ class RepairRequestStoreTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('repair_requests', 0);
+        $this->assertDatabaseCount('repair_logs', 0);
     }
 
     /**
@@ -100,6 +114,7 @@ class RepairRequestStoreTest extends TestCase
         $response->assertForbidden();
 
         $this->assertDatabaseCount('repair_requests', 0);
+        $this->assertDatabaseCount('repair_logs', 0);
     }
 
     /**
