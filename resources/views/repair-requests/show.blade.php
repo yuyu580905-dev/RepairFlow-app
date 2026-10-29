@@ -155,36 +155,41 @@
                         担当技術者の割り当て
                     </h2>
 
-                    <form action="{{ route('repair-requests.assign-technician', $repairRequest) }}" method="POST"
-                        class="mt-5 space-y-4" novalidate>
-                        @csrf
-                        @method('PATCH')
+                    @if ($repairRequest->status === 'completed')
+                        <p class="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
+                            完了した修理依頼の担当技術者は変更できません。
+                        </p>
+                    @else
+                        <form action="{{ route('repair-requests.assign-technician', $repairRequest) }}" method="POST" class="mt-5 space-y-4"
+                            novalidate>
+                            @csrf
+                            @method('PATCH')
 
-                        <div>
-                            <label for="assigned_to" class="block text-sm font-semibold text-slate-700">
-                                担当技術者
-                            </label>
+                            <div>
+                                <label for="assigned_to" class="block text-sm font-semibold text-slate-700">
+                                    担当技術者
+                                </label>
 
-                            <select id="assigned_to" name="assigned_to" required
-                                class="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-4 py-3">
-                                <option value="">技術者を選択してください</option>
+                                <select id="assigned_to" name="assigned_to" required
+                                    class="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-4 py-3">
+                                    <option value="">技術者を選択してください</option>
 
-                                @foreach ($technicians as $technician)
-                                    <option value="{{ $technician->id }}" @selected(
-            (string) old('assigned_to', $repairRequest->assigned_to)
-            === (string) $technician->id
-        )>
-                                        {{ $technician->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                                    @foreach ($technicians as $technician)
+                                        <option value="{{ $technician->id }}" @selected(
+                                            (string) old('assigned_to', $repairRequest->assigned_to)
+                                            === (string) $technician->id
+                                        )>
+                                            {{ $technician->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                        <button type="submit"
-                            class="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
-                            担当技術者を割り当てる
-                        </button>
-                    </form>
+                            <button type="submit" class="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
+                                担当技術者を割り当てる
+                            </button>
+                        </form>
+                    @endif
                 </section>
             @endif
 
@@ -524,55 +529,53 @@
                 @else
                                         <ol class="mt-6 space-y-5">
                         @foreach ($repairRequest->repairLogs->sortByDesc('created_at') as $log)
-                            <li class="border-l-2 border-blue-200 pl-4">
-                                <p class="font-semibold text-slate-900">
-                                    {{ match ($log->action) {
-                                        'request_created' => '修理依頼を作成',
-                                        'technician_assigned' => '担当技術者を割り当て',
-                                        'status_changed' => 'ステータス変更',
-                                        'cancellation_requested' => 'キャンセル申請',
-                                        'cancellation_approved' => 'キャンセル申請を承認',
-                                        'cancellation_rejected' => 'キャンセル申請を却下',
-                                        default => $log->action,
-                                    } }}
-                                </p>
+                                                <li class="border-l-2 border-blue-200 pl-4">
+                                                    <p class="font-semibold text-slate-900">
+                                                        {{ match ($log->action) {
+            'request_created' => '修理依頼を作成',
+            'technician_assigned' => '担当技術者を割り当て',
+            'status_changed' => 'ステータス変更',
+            'cancellation_requested' => 'キャンセル申請',
+            'cancellation_approved' => 'キャンセル申請を承認',
+            'cancellation_rejected' => 'キャンセル申請を却下',
+            default => $log->action,
+        } }}
+                                                    </p>
 
-                                @if ($log->from_status || $log->to_status)
-                                    <p class="mt-1 text-sm text-slate-600">
-                                        {{ match ($log->from_status) {
-                                            'received' => '受付済み',
-                                            'in_progress' => '対応中',
-                                            'on_hold' => '保留中',
-                                            'completed' => '完了',
-                                            'cancelled' => 'キャンセル済み',
-                                            default => $log->from_status,
-                                        } }}
-                                        →
-                                        {{ match ($log->to_status) {
-                                            'received' => '受付済み',
-                                            'in_progress' => '対応中',
-                                            'on_hold' => '保留中',
-                                            'completed' => '完了',
-                                            'cancelled' => 'キャンセル済み',
-                                            default => $log->to_status,
-                                        } }}
-                                    </p>
-                                @endif
+                                                    @if ($log->from_status || $log->to_status)
+                                                        <p class="mt-1 text-sm text-slate-600">
+                                                            {{ match ($log->from_status) {
+                'received' => '受付済み',
+                'in_progress' => '対応中',
+                'on_hold' => '保留中',
+                'completed' => '完了',
+                'cancelled' => 'キャンセル済み',
+                default => $log->from_status,
+            } }}
+                                                            →
+                                                            {{ match ($log->to_status) {
+                'received' => '受付済み',
+                'in_progress' => '対応中',
+                'on_hold' => '保留中',
+                'completed' => '完了',
+                'cancelled' => 'キャンセル済み',
+                default => $log->to_status,
+            } }}
+                                                        </p>
+                                                    @endif
 
-                                <p class="mt-2 whitespace-pre-wrap text-sm text-slate-700">
-                                    {{ $log->message }}
-                                </p>
+                                                    <p class="mt-2 whitespace-pre-wrap text-sm text-slate-700">{{ $log->message }}</p>
 
-                                <p class="mt-2 text-xs text-slate-500">
-                                    記録者：{{ $log->user?->name ?? '不明' }}
-                                    ／
-                                    {{ $log->created_at
-                                        ? $log->created_at->copy()
-                                            ->setTimezone('Asia/Tokyo')
-                                            ->format('Y/m/d H:i')
-                                        : '日時不明' }}
-                                </p>
-                            </li>
+                                                    <p class="mt-2 text-xs text-slate-500">
+                                                        記録者：{{ $log->user?->name ?? '不明' }}
+                                                        ／
+                                                        {{ $log->created_at
+            ? $log->created_at->copy()
+                ->setTimezone('Asia/Tokyo')
+                ->format('Y/m/d H:i')
+            : '日時不明' }}
+                                                    </p>
+                                                </li>
                         @endforeach
                     </ol>
                 @endif

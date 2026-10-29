@@ -133,15 +133,21 @@ class RepairRequestController extends Controller
     ): RedirectResponse {
         $validated = $request->validated();
 
-        DB::transaction(function () use (
+        $assignmentChanged = DB::transaction(function () use (
             $validated,
             $repairRequest,
             $request
-        ): void {
+        ): bool {
             $lockedRepairRequest = RepairRequest::query()
                 ->whereKey($repairRequest->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            if ($lockedRepairRequest->status === 'completed') {
+                throw ValidationException::withMessages([
+                    'assigned_to' => '完了した修理依頼の担当技術者は変更できません。',
+                ]);
+            }
 
             $technician = User::query()
                 ->whereKey($validated['assigned_to'])
@@ -156,6 +162,20 @@ class RepairRequestController extends Controller
                 ]);
             }
 
+            // 同じ技術者が選択された場合は、更新も履歴追加もしない。
+            if (
+                (int) $lockedRepairRequest->assigned_to ===
+                (int) $technician->id
+            ) {
+                return false;
+            }
+
+            $previousTechnician = $lockedRepairRequest->assignedTechnician;
+
+            $message = $previousTechnician === null
+                ? "担当技術者を {$technician->name} に割り当てました。"
+                : "担当技術者を「{$previousTechnician->name}」から「{$technician->name}」に変更しました。";
+
             $lockedRepairRequest->update([
                 'assigned_to' => $technician->id,
             ]);
@@ -164,15 +184,22 @@ class RepairRequestController extends Controller
                 'repair_request_id' => $lockedRepairRequest->id,
                 'user_id' => $request->user()->id,
                 'action' => 'technician_assigned',
-                'message' => "担当技術者を {$technician->name} に割り当てました。",
+                'message' => $message,
                 'from_status' => null,
                 'to_status' => null,
             ]);
+
+            return true;
         });
 
         return redirect()
             ->route('repair-requests.show', $repairRequest)
-            ->with('status', '担当技術者を割り当てました。');
+            ->with(
+                'status',
+                $assignmentChanged
+                    ? '担当技術者を割り当てました。'
+                    : '担当技術者に変更はありません。'
+            );
     }
 
     /**
