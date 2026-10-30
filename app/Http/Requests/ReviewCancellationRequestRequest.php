@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\CancellationRequest;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -13,10 +14,11 @@ class ReviewCancellationRequestRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
+        $cancellationRequest = $this->route('cancellationRequest');
 
         return $user !== null
-            && $user->is_active
-            && $user->role === 'admin';
+            && $cancellationRequest instanceof CancellationRequest
+            && $user->can('review', $cancellationRequest);
     }
 
     /**

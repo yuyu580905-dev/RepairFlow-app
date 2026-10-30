@@ -21,10 +21,8 @@ class UpdateRepairRequestStatusRequest extends FormRequest
         $repairRequest = $this->route('repairRequest');
 
         return $user !== null
-            && $user->role === 'technician'
-            && $user->is_active
             && $repairRequest instanceof RepairRequest
-            && (int) $repairRequest->assigned_to === (int) $user->id;
+            && $user->can('updateStatus', $repairRequest);
     }
 
     /**

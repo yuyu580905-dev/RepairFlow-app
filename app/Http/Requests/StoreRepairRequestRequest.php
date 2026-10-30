@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\RepairRequest;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -12,7 +13,7 @@ class StoreRepairRequestRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->role === 'requester';
+        return $this->user()?->can('create', RepairRequest::class) ?? false;
     }
 
     /**

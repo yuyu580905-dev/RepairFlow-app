@@ -30,10 +30,7 @@ class CancellationRequestController extends Controller
                 ->firstOrFail();
 
             abort_unless(
-                $user->is_active
-                    && $user->role === 'requester'
-                    && (int) $lockedRepairRequest->requester_id === (int) $user->id
-                    && $lockedRepairRequest->status === 'received',
+                $user->can('requestCancellation', $lockedRepairRequest),
                 403
             );
 
@@ -97,6 +94,12 @@ class CancellationRequestController extends Controller
                 ->whereKey($cancellationRequest->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            // ロック取得後に認可を再確認する。
+            abort_unless(
+                $user->can('review', $lockedCancellationRequest),
+                403
+            );
 
             // 審査中の申請だけを処理する。
             abort_unless(

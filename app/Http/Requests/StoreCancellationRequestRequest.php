@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\RepairRequest;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -16,11 +17,8 @@ class StoreCancellationRequestRequest extends FormRequest
         $repairRequest = $this->route('repairRequest');
 
         return $user !== null
-            && $user->is_active
-            && $user->role === 'requester'
-            && $repairRequest !== null
-            && (int) $repairRequest->requester_id === (int) $user->id
-            && $repairRequest->status === 'received';
+            && $repairRequest instanceof RepairRequest
+            && $user->can('requestCancellation', $repairRequest);
     }
 
     /**

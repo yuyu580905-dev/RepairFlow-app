@@ -2,22 +2,29 @@
 
 namespace App\Providers;
 
-// use Illuminate\Support\Facades\Gate;
+use App\Models\CancellationRequest;
+use App\Models\RepairRequest;
+use App\Policies\CancellationRequestPolicy;
+use App\Policies\RepairRequestPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
+/**
+ * 認証・認可サービスを登録する。
+ */
 class AuthServiceProvider extends ServiceProvider
 {
     /**
-     * The model to policy mappings for the application.
+     * モデルとPolicyの対応関係。
      *
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        //
+        RepairRequest::class => RepairRequestPolicy::class,
+        CancellationRequest::class => CancellationRequestPolicy::class,
     ];
 
     /**
-     * Register any authentication / authorization services.
+     * 認可サービスを登録する。
      */
     public function boot(): void
     {

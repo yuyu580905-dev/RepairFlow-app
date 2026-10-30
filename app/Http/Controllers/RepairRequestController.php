@@ -21,6 +21,8 @@ class RepairRequestController extends Controller
      */
     public function index(Request $request): View
     {
+        $this->authorize('viewAny', RepairRequest::class);
+
         $user = $request->user();
 
         abort_unless($user !== null, 403);
@@ -33,8 +35,6 @@ class RepairRequestController extends Controller
             $query->where('requester_id', $user->id);
         } elseif ($user->role === 'technician') {
             $query->where('assigned_to', $user->id);
-        } elseif ($user->role !== 'admin') {
-            abort(403);
         }
 
         $repairRequests = $query->paginate(10);
@@ -47,22 +47,9 @@ class RepairRequestController extends Controller
     /**
      * 修理依頼の詳細を表示する。
      */
-    public function show(
-        Request $request,
-        RepairRequest $repairRequest
-    ): View {
-        $user = $request->user();
-
-        abort_unless($user !== null, 403);
-
-        $canView = match ($user->role) {
-            'requester' => $repairRequest->requester_id === $user->id,
-            'technician' => $repairRequest->assigned_to === $user->id,
-            'admin' => true,
-            default => false,
-        };
-
-        abort_unless($canView, 403);
+    public function show(RepairRequest $repairRequest): View
+    {
+        $this->authorize('view', $repairRequest);
 
         $repairRequest->load([
             'requester',
@@ -89,15 +76,16 @@ class RepairRequestController extends Controller
      */
     public function create(): View
     {
+        $this->authorize('create', RepairRequest::class);
+
         return view('repair-requests.create');
     }
 
     /**
      * 修理依頼を登録する。
      */
-    public function store(
-        StoreRepairRequestRequest $request
-    ): RedirectResponse {
+    public function store(StoreRepairRequestRequest $request): RedirectResponse
+    {
         $user = $request->user();
 
         abort_unless($user !== null, 403);
@@ -132,11 +120,14 @@ class RepairRequestController extends Controller
         RepairRequest $repairRequest
     ): RedirectResponse {
         $validated = $request->validated();
+        $user = $request->user();
+
+        abort_unless($user !== null, 403);
 
         $assignmentChanged = DB::transaction(function () use (
             $validated,
             $repairRequest,
-            $request
+            $user
         ): bool {
             $lockedRepairRequest = RepairRequest::query()
                 ->whereKey($repairRequest->id)
@@ -182,7 +173,7 @@ class RepairRequestController extends Controller
 
             RepairLog::create([
                 'repair_request_id' => $lockedRepairRequest->id,
-                'user_id' => $request->user()->id,
+                'user_id' => $user->id,
                 'action' => 'technician_assigned',
                 'message' => $message,
                 'from_status' => null,
@@ -224,9 +215,7 @@ class RepairRequestController extends Controller
 
             abort_unless(
                 $user !== null
-                    && $user->role === 'technician'
-                    && $user->is_active
-                    && (int) $lockedRepairRequest->assigned_to === (int) $user->id,
+                    && $user->can('updateStatus', $lockedRepairRequest),
                 403
             );
 
