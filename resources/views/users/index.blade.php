@@ -35,9 +35,18 @@
                 </a>
             </div>
 
+            {{-- 登録成功メッセージ --}}
+            @if (session('success'))
+                <div class="mt-6 rounded-xl border border-green-200 bg-green-50 p-4">
+                    <p class="font-semibold text-green-700">
+                        {{ session('success') }}
+                    </p>
+                </div>
+            @endif
+
             {{-- 検索・絞り込み --}}
             <form method="GET" action="{{ route('users.index') }}"
-                class="mt-8 rounded-xl bg-slate-50 p-5">
+                class="mt-8 rounded-xl bg-slate-50 p-5" novalidate>
 
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
 
@@ -59,7 +68,7 @@
                     <div>
                         <label for="role"
                             class="mb-2 block text-sm font-semibold text-slate-700">
-                            ロール
+                            ユーザー種別
                         </label>
 
                         <select id="role" name="role"
@@ -117,16 +126,24 @@
             </form>
 
             {{-- ユーザー件数 --}}
-            <div class="mt-8 flex flex-wrap items-center justify-between gap-2">
-                <h2 class="text-lg font-bold text-slate-900">
-                    ユーザー一覧
-                </h2>
+            <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex flex-wrap items-center gap-3">
+                    <h2 class="text-lg font-bold text-slate-900">
+                        ユーザー一覧
+                    </h2>
 
-                <p class="text-sm text-slate-500">
-                    全 {{ $users->total() }} 件
-                </p>
+                    <p class="text-sm text-slate-500">
+                        全 {{ $users->total() }} 件
+                    </p>
+                </div>
+
+                <a
+                    href="{{ route('users.create') }}"
+                    class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                    ユーザーを登録する
+                </a>
             </div>
-
             {{-- ユーザー一覧テーブル --}}
             <div class="mt-4 overflow-x-auto">
                 <table class="w-full min-w-[750px] text-left text-sm">
@@ -136,7 +153,7 @@
                             <th class="px-4 py-3 font-semibold">ID</th>
                             <th class="px-4 py-3 font-semibold">名前</th>
                             <th class="px-4 py-3 font-semibold">メールアドレス</th>
-                            <th class="px-4 py-3 font-semibold">ロール</th>
+                            <th class="px-4 py-3 font-semibold">ユーザー種別</th>
                             <th class="px-4 py-3 font-semibold">状態</th>
                             <th class="px-4 py-3 font-semibold">登録日時</th>
                         </tr>
