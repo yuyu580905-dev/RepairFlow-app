@@ -46,9 +46,16 @@
                 </div>
             @endif
 
+            @if (auth()->user()->role === 'admin')
+                <a href="{{ route('users.index') }}" class="mt-4 inline-block rounded-lg bg-blue-600 px-5 py-3
+                            font-semibold text-white transition hover:bg-blue-700">
+                    ユーザー管理
+                </a>
+            @endif
+
             @if (auth()->user()->role === 'requester')
                 <a href="{{ route('repair-requests.create') }}" class="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-3
-                                        font-semibold text-white transition hover:bg-blue-700">
+                                            font-semibold text-white transition hover:bg-blue-700">
                     修理依頼を登録する
                 </a>
             @endif
