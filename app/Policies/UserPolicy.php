@@ -26,4 +26,13 @@ class UserPolicy
         return $user->is_active
             && $user->role === 'admin';
     }
+
+    /**
+     * ユーザー情報を更新できるか判定する。
+     */
+    public function update(User $user, User $target): bool
+    {
+        return $user->is_active
+            && $user->role === 'admin';
+    }
 }

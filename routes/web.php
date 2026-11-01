@@ -62,6 +62,16 @@ Route::middleware('auth')->group(function () {
         'store',
     ])->name('users.store');
 
+    Route::get('/users/{user}/edit', [
+        UserController::class,
+        'edit',
+    ])->name('users.edit');
+
+    Route::put('/users/{user}', [
+        UserController::class,
+        'update',
+    ])->name('users.update');
+
     Route::get('/users', [
         UserController::class,
         'index',

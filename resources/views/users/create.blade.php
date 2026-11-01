@@ -29,8 +29,8 @@
                     </p>
                 </div>
 
-                <a href="{{ route('users.index') }}" class="rounded-lg border border-slate-300 px-5 py-3
-                    font-semibold text-slate-700 transition hover:bg-slate-50">
+                <a href="{{ route('users.index') }}"
+                    class="rounded-lg border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50">
                     ユーザー一覧へ戻る
                 </a>
             </div>
@@ -62,8 +62,7 @@
                     </label>
 
                     <input type="text" id="name" name="name" value="{{ old('name') }}" required maxlength="255"
-                        autocomplete="name" class="w-full rounded-lg border border-slate-300 px-3 py-3
-                        focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100
+                        autocomplete="name" class="w-full rounded-lg border border-slate-300 px-3 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100
                         @error('name') border-red-500 @enderror">
 
                     @error('name')
@@ -78,8 +77,7 @@
                     </label>
 
                     <input type="email" id="email" name="email" value="{{ old('email') }}" required maxlength="255"
-                        autocomplete="email" class="w-full rounded-lg border border-slate-300 px-3 py-3
-                        focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100
+                        autocomplete="email" class="w-full rounded-lg border border-slate-300 px-3 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100
                         @error('email') border-red-500 @enderror">
 
                     @error('email')
@@ -94,8 +92,7 @@
                     </label>
 
                     <input type="password" id="password" name="password" required minlength="8"
-                        autocomplete="new-password" class="w-full rounded-lg border border-slate-300 px-3 py-3
-                        focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100
+                        autocomplete="new-password" class="w-full rounded-lg border border-slate-300 px-3 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100
                         @error('password') border-red-500 @enderror">
 
                     <p class="mt-2 text-xs text-slate-500">
@@ -114,8 +111,8 @@
                     </label>
 
                     <input type="password" id="password_confirmation" name="password_confirmation" required
-                        minlength="8" autocomplete="new-password" class="w-full rounded-lg border border-slate-300 px-3 py-3
-                        focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                        minlength="8" autocomplete="new-password"
+                        class="w-full rounded-lg border border-slate-300 px-3 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
                 </div>
 
                 {{-- ユーザー種別 --}}
@@ -124,9 +121,8 @@
                         ユーザー種別
                     </label>
 
-                    <select id="role" name="role" required class="w-full rounded-lg border border-slate-300 px-3 py-3
-                        focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100
-                        @error('role') border-red-500 @enderror">
+                    <select id="role" name="role" required class="w-full rounded-lg border border-slate-300 px-3 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100
+                    @error('role') border-red-500 @enderror">
 
                         <option value="">選択してください</option>
 
@@ -162,14 +158,13 @@
                 {{-- 操作ボタン --}}
                 <div class="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-6">
 
-                    <a href="{{ route('users.index') }}" class="rounded-lg border border-slate-300 px-5 py-3
-                        font-semibold text-slate-700 transition hover:bg-slate-50">
+                    <a href="{{ route('users.index') }}"
+                        class="rounded-lg border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50">
                         キャンセル
                     </a>
 
-                    <button type="submit" class="rounded-lg bg-blue-600 px-6 py-3
-                        font-semibold text-white transition hover:bg-blue-700
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    <button type="submit"
+                        class="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                         ユーザーを登録
                     </button>
 

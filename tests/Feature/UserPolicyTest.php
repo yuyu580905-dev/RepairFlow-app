@@ -107,4 +107,57 @@ class UserPolicyTest extends TestCase
             Gate::forUser($admin)->allows('create', User::class)
         );
     }
+
+    /**
+     * 有効な管理者はユーザー情報を更新できる。
+     */
+    public function test_active_admin_can_update_users(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $target = User::factory()->create();
+
+        $this->assertTrue(
+            Gate::forUser($admin)->allows('update', $target)
+        );
+    }
+
+    /**
+     * 管理者以外はユーザー情報を更新できない。
+     */
+    public function test_non_admin_cannot_update_users(): void
+    {
+        $target = User::factory()->create();
+
+        foreach (['requester', 'technician'] as $role) {
+            $user = User::factory()->create([
+                'role' => $role,
+                'is_active' => true,
+            ]);
+
+            $this->assertFalse(
+                Gate::forUser($user)->allows('update', $target)
+            );
+        }
+    }
+
+    /**
+     * 無効化された管理者はユーザー情報を更新できない。
+     */
+    public function test_inactive_admin_cannot_update_users(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => false,
+        ]);
+
+        $target = User::factory()->create();
+
+        $this->assertFalse(
+            Gate::forUser($admin)->allows('update', $target)
+        );
+    }
 }

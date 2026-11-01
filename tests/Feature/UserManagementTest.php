@@ -285,4 +285,262 @@ class UserManagementTest extends TestCase
             ])
             ->assertSessionHasErrors('password');
     }
+
+    /**
+     * 管理者はユーザー編集画面を表示できる。
+     */
+    public function test_admin_can_view_user_edit_form(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->get(route('users.edit', $target))
+            ->assertOk()
+            ->assertViewIs('users.edit')
+            ->assertViewHas('user', $target);
+    }
+
+    /**
+     * 管理者はユーザー情報を更新できる。
+     */
+    public function test_admin_can_update_user_information(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $target = User::factory()->create([
+            'role' => 'requester',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $target), [
+                'name' => '更新後ユーザー',
+                'email' => 'updated@example.com',
+                'role' => 'technician',
+                'is_active' => '0',
+            ])
+            ->assertRedirect(route('users.index'))
+            ->assertSessionHas('success', 'ユーザー情報を更新しました。');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'name' => '更新後ユーザー',
+            'email' => 'updated@example.com',
+            'role' => 'technician',
+            'is_active' => false,
+        ]);
+    }
+
+    /**
+     * 自分自身のメールアドレスを変更しなければ更新できる。
+     */
+    public function test_admin_can_update_user_without_changing_email(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $target = User::factory()->create([
+            'email' => 'same@example.com',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $target), [
+                'name' => '名前変更',
+                'email' => 'same@example.com',
+                'role' => 'requester',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'name' => '名前変更',
+            'email' => 'same@example.com',
+        ]);
+    }
+
+    /**
+     * 他のユーザーと重複するメールアドレスには更新できない。
+     */
+    public function test_user_update_rejects_duplicate_email(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $target = User::factory()->create();
+
+        $existingUser = User::factory()->create([
+            'email' => 'existing@example.com',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $target), [
+                'name' => '更新テスト',
+                'email' => $existingUser->email,
+                'role' => 'requester',
+                'is_active' => '1',
+            ])
+            ->assertSessionHasErrors('email');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'email' => $target->email,
+        ]);
+    }
+
+    /**
+     * 不正なユーザー種別では更新できない。
+     */
+    public function test_user_update_rejects_invalid_role(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $target), [
+                'name' => '不正種別テスト',
+                'email' => $target->email,
+                'role' => 'super_admin',
+                'is_active' => '1',
+            ])
+            ->assertSessionHasErrors('role');
+    }
+
+    /**
+     * 管理者以外はユーザー情報を更新できない。
+     */
+    public function test_non_admin_cannot_update_users(): void
+    {
+        $target = User::factory()->create();
+
+        foreach (['requester', 'technician'] as $role) {
+            $user = User::factory()->create([
+                'role' => $role,
+                'is_active' => true,
+            ]);
+
+            $this->actingAs($user)
+                ->put(route('users.update', $target), [
+                    'name' => '不正更新',
+                    'email' => $target->email,
+                    'role' => 'admin',
+                    'is_active' => '1',
+                ])
+                ->assertForbidden();
+        }
+
+        $this->assertDatabaseMissing('users', [
+            'id' => $target->id,
+            'name' => '不正更新',
+        ]);
+    }
+
+    /**
+     * 無効化された管理者はユーザー情報を更新できない。
+     */
+    public function test_inactive_admin_cannot_update_users(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => false,
+        ]);
+
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $target), [
+                'name' => '不正更新',
+                'email' => $target->email,
+                'role' => 'requester',
+                'is_active' => '1',
+            ])
+            ->assertForbidden();
+    }
+
+    /**
+     * 未認証ユーザーはユーザー情報を更新できない。
+     */
+    public function test_guest_cannot_update_users(): void
+    {
+        $target = User::factory()->create();
+
+        $this->put(route('users.update', $target), [
+            'name' => '未認証更新',
+            'email' => $target->email,
+            'role' => 'requester',
+            'is_active' => '1',
+        ])->assertRedirect(route('login'));
+    }
+
+    /**
+     * 最後の有効な管理者は無効化できない。
+     */
+    public function test_last_active_admin_cannot_be_deactivated(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $admin), [
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'role' => 'admin',
+                'is_active' => '0',
+            ])
+            ->assertSessionHasErrors('role');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $admin->id,
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+    }
+
+    /**
+     * 他に有効な管理者がいれば管理者を無効化できる。
+     */
+    public function test_admin_can_be_deactivated_when_another_active_admin_exists(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $target = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $target), [
+                'name' => $target->name,
+                'email' => $target->email,
+                'role' => 'admin',
+                'is_active' => '0',
+            ])
+            ->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'is_active' => false,
+        ]);
+    }
 }
