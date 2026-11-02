@@ -23,15 +23,21 @@
                 依頼番号：{{ $repairRequest->id }}
             </p>
 
+            {{-- 登録成功メッセージ --}}
             @if (session('success'))
-                <div class="mt-6 rounded-lg bg-green-50 p-4 text-sm font-medium text-green-800" role="status">
-                    {{ session('success') }}
+                <div class="mt-6 rounded-xl border border-green-200 bg-green-50 p-4">
+                    <p class="font-semibold text-green-700">
+                        {{ session('success') }}
+                    </p>
                 </div>
             @endif
 
+            {{-- ステータス更新メッセージ --}}
             @if (session('status'))
-                <div class="mt-6 rounded-lg bg-green-50 p-4 text-sm font-medium text-green-800" role="status">
-                    {{ session('status') }}
+                <div class="mt-6 rounded-xl border border-green-200 bg-green-50 p-4">
+                    <p class="font-semibold text-green-700">
+                        {{ session('status') }}
+                    </p>
                 </div>
             @endif
 
@@ -176,9 +182,9 @@
 
                                     @foreach ($technicians as $technician)
                                         <option value="{{ $technician->id }}" @selected(
-                                            (string) old('assigned_to', $repairRequest->assigned_to)
-                                            === (string) $technician->id
-                                        )>
+                (string) old('assigned_to', $repairRequest->assigned_to)
+                === (string) $technician->id
+            )>
                                             {{ $technician->name }}
                                         </option>
                                     @endforeach

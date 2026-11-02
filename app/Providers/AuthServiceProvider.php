@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Models\CancellationRequest;
 use App\Models\RepairRequest;
+use App\Models\User;
 use App\Policies\CancellationRequestPolicy;
 use App\Policies\RepairRequestPolicy;
+use App\Policies\UserPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 /**
@@ -21,6 +23,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         RepairRequest::class => RepairRequestPolicy::class,
         CancellationRequest::class => CancellationRequestPolicy::class,
+        User::class => UserPolicy::class,
     ];
 
     /**

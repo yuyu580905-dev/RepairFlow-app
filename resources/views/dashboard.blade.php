@@ -28,7 +28,7 @@
             </p>
 
             <p class="mt-2 text-sm text-slate-500">
-                現在のロール：{{ auth()->user()->role }}
+                現在のユーザー種別：{{ auth()->user()->role }}
             </p>
 
             <p class="mt-6 text-sm text-slate-600">
@@ -41,14 +41,23 @@
             </a>
 
             @if (session('status'))
-                <div class="mt-6 rounded-lg bg-green-50 p-4 text-sm text-green-700">
-                    {{ session('status') }}
+                <div class="mt-6 rounded-xl border border-green-200 bg-green-50 p-4">
+                    <p class="font-semibold text-green-700">
+                        {{ session('status') }}
+                    </p>
                 </div>
+            @endif
+
+            @if (auth()->user()->role === 'admin')
+                <a href="{{ route('users.index') }}" class="mt-4 inline-block rounded-lg bg-blue-600 px-5 py-3
+                                    font-semibold text-white transition hover:bg-blue-700">
+                    ユーザー管理
+                </a>
             @endif
 
             @if (auth()->user()->role === 'requester')
                 <a href="{{ route('repair-requests.create') }}" class="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-3
-                                        font-semibold text-white transition hover:bg-blue-700">
+                                                    font-semibold text-white transition hover:bg-blue-700">
                     修理依頼を登録する
                 </a>
             @endif

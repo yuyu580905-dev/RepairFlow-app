@@ -25,8 +25,10 @@
             </header>
 
             @if (session('status'))
-                <div class="mb-5 rounded-lg bg-green-50 p-3 text-sm text-green-700">
-                    {{ session('status') }}
+                <div class="mt-6 rounded-xl border border-green-200 bg-green-50 p-4">
+                    <p class="font-semibold text-green-700">
+                        {{ session('status') }}
+                    </p>
                 </div>
             @endif
 

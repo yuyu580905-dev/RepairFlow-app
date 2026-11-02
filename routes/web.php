@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CancellationRequestController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -50,4 +51,29 @@ Route::middleware('auth')->group(function () {
         '/cancellation-requests/{cancellationRequest}/review',
         [CancellationRequestController::class, 'review']
     )->name('cancellation-requests.review');
+
+    Route::get('/users/create', [
+        UserController::class,
+        'create',
+    ])->name('users.create');
+
+    Route::post('/users', [
+        UserController::class,
+        'store',
+    ])->name('users.store');
+
+    Route::get('/users/{user}/edit', [
+        UserController::class,
+        'edit',
+    ])->name('users.edit');
+
+    Route::put('/users/{user}', [
+        UserController::class,
+        'update',
+    ])->name('users.update');
+
+    Route::get('/users', [
+        UserController::class,
+        'index',
+    ])->name('users.index');
 });
