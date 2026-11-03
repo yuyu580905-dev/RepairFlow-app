@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use App\Models\RepairRequest;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -129,6 +130,37 @@ class UserController extends Controller
                 ]);
             }
 
+            // 担当中の修理依頼を持つ技術者の無効化・ロール変更を禁止する。
+            $isRoleChanging = $validated['role'] !== $lockedUser->role;
+
+            $isBeingDeactivated = $lockedUser->is_active
+                && ! (bool) $validated['is_active'];
+
+            $isTechnicianBeingChanged = $lockedUser->role === 'technician'
+                && ($isRoleChanging || $isBeingDeactivated);
+
+            if ($isTechnicianBeingChanged) {
+                $hasActiveAssignedRequests = RepairRequest::query()
+                    ->where('assigned_to', $lockedUser->id)
+                    ->whereIn('status', ['received', 'in_progress', 'on_hold'])
+                    ->exists();
+
+                if ($hasActiveAssignedRequests) {
+                    $errors = [];
+
+                    if ($isRoleChanging) {
+                        $errors['role'] = '担当中の修理依頼がある技術者のユーザー種別は変更できません。';
+                    }
+
+                    if ($isBeingDeactivated) {
+                        $errors['is_active'] = '担当中の修理依頼がある技術者は無効化できません。';
+                    }
+
+                    throw ValidationException::withMessages($errors);
+                }
+            }
+
+            // ユーザー情報を更新する。
             $lockedUser->name = $validated['name'];
             $lockedUser->email = $validated['email'];
             $lockedUser->role = $validated['role'];

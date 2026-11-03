@@ -20,6 +20,7 @@ return new class extends Migration
             $table->timestamps();
             $table->index(['repair_request_id', 'created_at']);
             $table->index(['status', 'created_at']);
+            $table->index(['repair_request_id', 'status']);
         });
     }
 
