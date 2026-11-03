@@ -53,7 +53,7 @@
                     <label for="description" class="mb-2 block text-sm font-medium text-slate-700">
                         修理内容
                     </label>
-                    <textarea id="description" name="description" rows="5" required
+                    <textarea id="description" name="description" rows="5" required maxlength="10000"
                         class="w-full rounded-lg border border-slate-300 px-4 py-3
                         outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200">{{ old('description') }}</textarea>
                     @error('description')

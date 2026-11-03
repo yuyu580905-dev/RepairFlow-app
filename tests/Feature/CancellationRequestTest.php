@@ -259,6 +259,67 @@ class CancellationRequestTest extends TestCase
     }
 
     /**
+     * 却下理由が未入力の場合はキャンセル申請を却下できない。
+     */
+    public function test_admin_cannot_reject_cancellation_request_without_review_comment(): void
+    {
+        [,, $cancellationRequest] = $this->createPendingCancellationRequest();
+
+        $admin = $this->createUser('admin');
+
+        $response = $this->actingAs($admin)->post(
+            route('cancellation-requests.review', $cancellationRequest),
+            [
+                'decision' => 'rejected',
+                'review_comment' => '',
+            ]
+        );
+
+        $response->assertSessionHasErrors('review_comment');
+
+        $this->assertDatabaseHas('cancellation_requests', [
+            'id' => $cancellationRequest->id,
+            'status' => 'pending',
+            'reviewed_by' => null,
+            'review_comment' => null,
+        ]);
+
+        $this->assertDatabaseCount('repair_logs', 0);
+    }
+
+    /**
+     * 管理者は審査コメントなしでもキャンセル申請を承認できる。
+     */
+    public function test_admin_can_approve_cancellation_request_without_review_comment(): void
+    {
+        [, $repairRequest, $cancellationRequest] =
+            $this->createPendingCancellationRequest();
+
+        $admin = $this->createUser('admin');
+
+        $response = $this->actingAs($admin)->post(
+            route('cancellation-requests.review', $cancellationRequest),
+            ['decision' => 'approved']
+        );
+
+        $response
+            ->assertRedirect(route('repair-requests.show', $repairRequest))
+            ->assertSessionHas('success', 'キャンセル申請を承認しました。修理依頼をキャンセルしました。');
+
+        $this->assertDatabaseHas('cancellation_requests', [
+            'id' => $cancellationRequest->id,
+            'status' => 'approved',
+            'reviewed_by' => $admin->id,
+            'review_comment' => null,
+        ]);
+
+        $this->assertDatabaseHas('repair_requests', [
+            'id' => $repairRequest->id,
+            'status' => 'cancelled',
+        ]);
+    }
+
+    /**
      * 管理者以外はキャンセル申請を審査できない。
      */
     public function test_non_admin_cannot_review_cancellation_request(): void

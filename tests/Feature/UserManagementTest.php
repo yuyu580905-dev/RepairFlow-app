@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\RepairRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,131 @@ use Tests\TestCase;
 class UserManagementTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * 管理者はユーザー名でユーザーを検索できる。
+     */
+    public function test_admin_can_search_users_by_name(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $targetUser = User::factory()->create([
+            'name' => '山田太郎',
+            'email' => 'yamada@example.com',
+        ]);
+
+        User::factory()->create([
+            'name' => '佐藤花子',
+            'email' => 'sato@example.com',
+        ]);
+
+        $response = $this->actingAs($admin)->get(
+            route('users.index', [
+                'keyword' => '山田',
+            ])
+        );
+
+        $response
+            ->assertOk()
+            ->assertSee('山田太郎')
+            ->assertDontSee('佐藤花子');
+    }
+
+    /**
+     * 管理者はメールアドレスでユーザーを検索できる。
+     */
+    public function test_admin_can_search_users_by_email(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        User::factory()->create([
+            'name' => '山田太郎',
+            'email' => 'yamada@example.com',
+        ]);
+
+        User::factory()->create([
+            'name' => '佐藤花子',
+            'email' => 'sato@example.com',
+        ]);
+
+        $response = $this->actingAs($admin)->get(
+            route('users.index', [
+                'keyword' => 'yamada@example.com',
+            ])
+        );
+
+        $response
+            ->assertOk()
+            ->assertSee('yamada@example.com')
+            ->assertDontSee('sato@example.com');
+    }
+
+    /**
+     * 管理者はロールでユーザーを絞り込める。
+     */
+    public function test_admin_can_filter_users_by_role(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        User::factory()->create([
+            'name' => '依頼者ユーザー',
+            'role' => 'requester',
+        ]);
+
+        User::factory()->create([
+            'name' => '技術者ユーザー',
+            'role' => 'technician',
+        ]);
+
+        $response = $this->actingAs($admin)->get(
+            route('users.index', [
+                'role' => 'technician',
+            ])
+        );
+
+        $response
+            ->assertOk()
+            ->assertSee('技術者ユーザー')
+            ->assertDontSee('依頼者ユーザー');
+    }
+
+    /**
+     * 管理者はアカウントの有効状態でユーザーを絞り込める。
+     */
+    public function test_admin_can_filter_users_by_active_status(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        User::factory()->create([
+            'name' => '有効ユーザー',
+            'is_active' => true,
+        ]);
+
+        User::factory()->create([
+            'name' => '無効ユーザー',
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($admin)->get(
+            route('users.index', [
+                'is_active' => '0',
+            ])
+        );
+
+        $response
+            ->assertOk()
+            ->assertSee('無効ユーザー')
+            ->assertDontSee('有効ユーザー');
+    }
 
     /**
      * 管理者はユーザー登録画面を表示できる。
@@ -515,6 +641,32 @@ class UserManagementTest extends TestCase
     }
 
     /**
+     * 最後の有効な管理者は管理者権限を変更できない。
+     */
+    public function test_last_active_admin_cannot_change_role(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $admin), [
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'role' => 'requester',
+                'is_active' => '1',
+            ])
+            ->assertSessionHasErrors('role');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $admin->id,
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+    }
+
+    /**
      * 他に有効な管理者がいれば管理者を無効化できる。
      */
     public function test_admin_can_be_deactivated_when_another_active_admin_exists(): void
@@ -541,6 +693,302 @@ class UserManagementTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $target->id,
             'is_active' => false,
+        ]);
+    }
+
+    /**
+     * 担当中の修理依頼がある技術者は無効化できない。
+     */
+    public function test_technician_with_active_requests_cannot_be_deactivated(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $repairRequest = $this->createAssignedRepairRequest($technician);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $technician), [
+                'name' => $technician->name,
+                'email' => $technician->email,
+                'role' => 'technician',
+                'is_active' => '0',
+            ])
+            ->assertSessionHasErrors('is_active');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $technician->id,
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $this->assertDatabaseHas('repair_requests', [
+            'id' => $repairRequest->id,
+            'assigned_to' => $technician->id,
+        ]);
+    }
+
+    /**
+     * 担当中の修理依頼がある技術者はロールを変更できない。
+     */
+    public function test_technician_with_active_requests_cannot_change_role(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $repairRequest = $this->createAssignedRepairRequest($technician);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $technician), [
+                'name' => $technician->name,
+                'email' => $technician->email,
+                'role' => 'requester',
+                'is_active' => '1',
+            ])
+            ->assertSessionHasErrors('role');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $technician->id,
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $this->assertDatabaseHas('repair_requests', [
+            'id' => $repairRequest->id,
+            'assigned_to' => $technician->id,
+        ]);
+    }
+
+    /**
+     * 担当中の修理依頼がある技術者は無効化とロール変更を同時にできない。
+     */
+    public function test_technician_with_active_requests_cannot_change_role_and_deactivate(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $repairRequest = $this->createAssignedRepairRequest($technician);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $technician), [
+                'name' => $technician->name,
+                'email' => $technician->email,
+                'role' => 'requester',
+                'is_active' => '0',
+            ])
+            ->assertSessionHasErrors([
+                'role',
+                'is_active',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $technician->id,
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $this->assertDatabaseHas('repair_requests', [
+            'id' => $repairRequest->id,
+            'assigned_to' => $technician->id,
+        ]);
+    }
+
+    /**
+     * 完了済みの修理依頼だけを持つ技術者は無効化できる。
+     */
+    public function test_technician_with_only_completed_requests_can_be_deactivated(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $repairRequest = $this->createAssignedRepairRequest(
+            $technician,
+            'completed'
+        );
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $technician), [
+                'name' => $technician->name,
+                'email' => $technician->email,
+                'role' => 'technician',
+                'is_active' => '0',
+            ])
+            ->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $technician->id,
+            'role' => 'technician',
+            'is_active' => false,
+        ]);
+
+        $this->assertDatabaseHas('repair_requests', [
+            'id' => $repairRequest->id,
+            'assigned_to' => $technician->id,
+            'status' => 'completed',
+        ]);
+    }
+
+    /**
+     * キャンセル済みの修理依頼だけを持つ技術者はロールを変更できる。
+     */
+    public function test_technician_with_only_cancelled_requests_can_change_role(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $repairRequest = $this->createAssignedRepairRequest(
+            $technician,
+            'cancelled'
+        );
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $technician), [
+                'name' => $technician->name,
+                'email' => $technician->email,
+                'role' => 'requester',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $technician->id,
+            'role' => 'requester',
+            'is_active' => true,
+        ]);
+
+        $this->assertDatabaseHas('repair_requests', [
+            'id' => $repairRequest->id,
+            'assigned_to' => $technician->id,
+            'status' => 'cancelled',
+        ]);
+    }
+
+    /**
+     * 担当中の修理依頼がない技術者は無効化できる。
+     */
+    public function test_technician_without_assigned_requests_can_be_deactivated(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $technician), [
+                'name' => $technician->name,
+                'email' => $technician->email,
+                'role' => 'technician',
+                'is_active' => '0',
+            ])
+            ->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $technician->id,
+            'role' => 'technician',
+            'is_active' => false,
+        ]);
+    }
+
+    /**
+     * 担当中の修理依頼がある技術者も名前とメールアドレスは変更できる。
+     */
+    public function test_technician_with_active_requests_can_update_profile_information(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $technician = User::factory()->create([
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $repairRequest = $this->createAssignedRepairRequest($technician);
+
+        $this->actingAs($admin)
+            ->put(route('users.update', $technician), [
+                'name' => '変更後の技術者',
+                'email' => 'updated-technician@example.com',
+                'role' => 'technician',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $technician->id,
+            'name' => '変更後の技術者',
+            'email' => 'updated-technician@example.com',
+            'role' => 'technician',
+            'is_active' => true,
+        ]);
+
+        $this->assertDatabaseHas('repair_requests', [
+            'id' => $repairRequest->id,
+            'assigned_to' => $technician->id,
+        ]);
+    }
+
+    /**
+     * 指定した技術者に修理依頼を割り当てる。
+     */
+    private function createAssignedRepairRequest(
+        User $technician,
+        string $status = 'received'
+    ): RepairRequest {
+        $requester = User::factory()->create([
+            'role' => 'requester',
+            'is_active' => true,
+        ]);
+
+        return RepairRequest::create([
+            'requester_id' => $requester->id,
+            'assigned_to' => $technician->id,
+            'title' => 'テスト修理依頼',
+            'description' => 'テスト用の修理依頼です。',
+            'location' => '東京都',
+            'asset_name' => 'テスト機器',
+            'priority' => 'normal',
+            'status' => $status,
         ]);
     }
 }

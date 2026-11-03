@@ -25,7 +25,7 @@ class StoreRepairRequestRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
+            'description' => ['required', 'string', 'max:10000'],
             'location' => ['required', 'string', 'max:255'],
             'asset_name' => ['required', 'string', 'max:255'],
             'priority' => [
@@ -47,6 +47,7 @@ class StoreRepairRequestRequest extends FormRequest
             'title.required' => '件名を入力してください。',
             'title.max' => '件名は255文字以内で入力してください。',
             'description.required' => '修理内容を入力してください。',
+            'description.max' => '修理内容は10000文字以内で入力してください。',
             'location.required' => '発生場所を入力してください。',
             'location.max' => '発生場所は255文字以内で入力してください。',
             'asset_name.required' => '対象設備を入力してください。',

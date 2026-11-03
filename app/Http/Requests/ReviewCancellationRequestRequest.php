@@ -30,7 +30,12 @@ class ReviewCancellationRequestRequest extends FormRequest
     {
         return [
             'decision' => ['required', 'string', 'in:approved,rejected'],
-            'review_comment' => ['nullable', 'string', 'max:2000'],
+            'review_comment' => [
+                'nullable',
+                'required_if:decision,rejected',
+                'string',
+                'max:2000',
+            ],
         ];
     }
 
@@ -45,6 +50,7 @@ class ReviewCancellationRequestRequest extends FormRequest
             'decision.required' => '審査結果を選択してください。',
             'decision.string' => '審査結果の指定が正しくありません。',
             'decision.in' => '審査結果は承認または却下を選択してください。',
+            'review_comment.required_if' => 'キャンセル申請を却下する場合は、却下理由を入力してください。',
             'review_comment.string' => '審査コメントは文字列で入力してください。',
             'review_comment.max' => '審査コメントは2000文字以内で入力してください。',
         ];

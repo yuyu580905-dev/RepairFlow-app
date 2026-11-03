@@ -319,6 +319,50 @@ class RepairRequestAssignmentTest extends TestCase
     }
 
     /**
+     * キャンセル済みの修理依頼は、別の技術者に再割り当てできないこと。
+     */
+    public function test_admin_cannot_reassign_technician_for_cancelled_repair_request(): void
+    {
+        $admin = User::factory()->create();
+        $admin->forceFill(['role' => 'admin'])->save();
+
+        $requester = User::factory()->create();
+
+        $previousTechnician = User::factory()->create();
+        $previousTechnician->forceFill([
+            'role' => 'technician',
+            'is_active' => true,
+        ])->save();
+
+        $newTechnician = User::factory()->create();
+        $newTechnician->forceFill([
+            'role' => 'technician',
+            'is_active' => true,
+        ])->save();
+
+        $repairRequest = $this->createRepairRequest($requester);
+        $repairRequest->update([
+            'assigned_to' => $previousTechnician->id,
+            'status' => 'cancelled',
+        ]);
+
+        $response = $this->actingAs($admin)->patch(
+            route('repair-requests.assign-technician', $repairRequest),
+            ['assigned_to' => $newTechnician->id]
+        );
+
+        $response->assertSessionHasErrors('assigned_to');
+
+        $this->assertDatabaseHas('repair_requests', [
+            'id' => $repairRequest->id,
+            'assigned_to' => $previousTechnician->id,
+            'status' => 'cancelled',
+        ]);
+
+        $this->assertDatabaseCount('repair_logs', 0);
+    }
+
+    /**
      * 修理依頼をテスト用に作成する。
      */
     private function createRepairRequest(User $requester): RepairRequest

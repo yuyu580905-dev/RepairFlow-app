@@ -134,9 +134,9 @@ class RepairRequestController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedRepairRequest->status === 'completed') {
+            if (in_array($lockedRepairRequest->status, ['completed', 'cancelled'], true)) {
                 throw ValidationException::withMessages([
-                    'assigned_to' => '完了した修理依頼の担当技術者は変更できません。',
+                    'assigned_to' => '完了またはキャンセルした修理依頼の担当技術者は変更できません。',
                 ]);
             }
 

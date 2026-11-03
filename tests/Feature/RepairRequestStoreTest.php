@@ -118,6 +118,32 @@ class RepairRequestStoreTest extends TestCase
     }
 
     /**
+     * 管理者は修理依頼を登録できない。
+     */
+    public function test_admin_cannot_store_repair_request(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($admin)->post(
+            route('repair-requests.store'),
+            [
+                'title' => '空調設備の故障',
+                'description' => '空調設備が動作しません。',
+                'location' => '3階会議室',
+                'asset_name' => '空調設備A',
+                'priority' => 'normal',
+            ]
+        );
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseCount('repair_requests', 0);
+        $this->assertDatabaseCount('repair_logs', 0);
+    }
+
+    /**
      * 未ログインユーザーは登録画面にアクセスできない。
      */
     public function test_guest_cannot_access_create_page(): void
@@ -125,6 +151,28 @@ class RepairRequestStoreTest extends TestCase
         $response = $this->get(route('repair-requests.create'));
 
         $response->assertRedirect(route('login'));
+    }
+
+    /**
+     * 未ログインユーザーは修理依頼を登録できない。
+     */
+    public function test_guest_cannot_store_repair_request(): void
+    {
+        $response = $this->post(
+            route('repair-requests.store'),
+            [
+                'title' => '空調設備の故障',
+                'description' => '空調設備が動作しません。',
+                'location' => '3階会議室',
+                'asset_name' => '空調設備A',
+                'priority' => 'normal',
+            ]
+        );
+
+        $response->assertRedirect(route('login'));
+
+        $this->assertDatabaseCount('repair_requests', 0);
+        $this->assertDatabaseCount('repair_logs', 0);
     }
 
     /**
@@ -167,5 +215,63 @@ class RepairRequestStoreTest extends TestCase
             'requester_id' => $otherUser->id,
             'title' => 'プリンターの故障',
         ]);
+    }
+
+    /**
+     * 修理内容が10000文字以内なら登録できる。
+     */
+    public function test_requester_can_store_repair_request_with_maximum_description_length(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'requester',
+        ]);
+
+        $description = str_repeat('あ', 10000);
+
+        $response = $this->actingAs($user)->post(
+            route('repair-requests.store'),
+            [
+                'title' => '空調設備の故障',
+                'description' => $description,
+                'location' => '3階会議室',
+                'asset_name' => '空調設備A',
+                'priority' => 'normal',
+            ]
+        );
+
+        $response->assertRedirect(route('dashboard'));
+
+        $this->assertDatabaseHas('repair_requests', [
+            'requester_id' => $user->id,
+            'description' => $description,
+        ]);
+    }
+
+    /**
+     * 修理内容が10001文字の場合は登録できない。
+     */
+    public function test_requester_cannot_store_repair_request_with_description_over_maximum_length(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'requester',
+        ]);
+
+        $description = str_repeat('あ', 10001);
+
+        $response = $this->actingAs($user)->post(
+            route('repair-requests.store'),
+            [
+                'title' => '空調設備の故障',
+                'description' => $description,
+                'location' => '3階会議室',
+                'asset_name' => '空調設備A',
+                'priority' => 'normal',
+            ]
+        );
+
+        $response->assertSessionHasErrors(['description']);
+
+        $this->assertDatabaseCount('repair_requests', 0);
+        $this->assertDatabaseCount('repair_logs', 0);
     }
 }
