@@ -16,17 +16,15 @@ class RepairRequestAssignmentTest extends TestCase
      */
     public function test_admin_can_assign_active_technician_and_append_log(): void
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['role' => 'admin'])->save();
+        $admin = User::factory()->admin()->create();
+        $requester = User::factory()->requester()->create();
+        $technician = User::factory()->technician()->create();
 
-        $requester = User::factory()->create();
-        $technician = User::factory()->create();
-        $technician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $repairRequest = $this->createRepairRequest($requester);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->normalPriority()
+            ->create();
 
         $response = $this->actingAs($admin)->patch(
             route('repair-requests.assign-technician', $repairRequest),
@@ -57,16 +55,15 @@ class RepairRequestAssignmentTest extends TestCase
      */
     public function test_non_admin_cannot_assign_technician(): void
     {
-        $requester = User::factory()->create();
-        $technician = User::factory()->create();
-        $technician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
+        $requester = User::factory()->requester()->create();
+        $technician = User::factory()->technician()->create();
 
-        $repairRequest = $this->createRepairRequest($requester);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create();
 
-        $otherRequester = User::factory()->create();
+        $otherRequester = User::factory()->requester()->create();
 
         $response = $this->actingAs($otherRequester)->patch(
             route('repair-requests.assign-technician', $repairRequest),
@@ -91,11 +88,13 @@ class RepairRequestAssignmentTest extends TestCase
      */
     public function test_admin_cannot_assign_requester_as_technician(): void
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['role' => 'admin'])->save();
+        $admin = User::factory()->admin()->create();
+        $requester = User::factory()->requester()->create();
 
-        $requester = User::factory()->create();
-        $repairRequest = $this->createRepairRequest($requester);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create();
 
         $response = $this->actingAs($admin)->patch(
             route('repair-requests.assign-technician', $repairRequest),
@@ -115,17 +114,17 @@ class RepairRequestAssignmentTest extends TestCase
      */
     public function test_admin_cannot_assign_inactive_technician(): void
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['role' => 'admin'])->save();
+        $admin = User::factory()->admin()->create();
+        $requester = User::factory()->requester()->create();
+        $technician = User::factory()
+            ->technician()
+            ->inactive()
+            ->create();
 
-        $requester = User::factory()->create();
-        $technician = User::factory()->create();
-        $technician->forceFill([
-            'role' => 'technician',
-            'is_active' => false,
-        ])->save();
-
-        $repairRequest = $this->createRepairRequest($requester);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create();
 
         $response = $this->actingAs($admin)->patch(
             route('repair-requests.assign-technician', $repairRequest),
@@ -145,27 +144,16 @@ class RepairRequestAssignmentTest extends TestCase
      */
     public function test_admin_can_reassign_technician_and_append_change_log(): void
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['role' => 'admin'])->save();
+        $admin = User::factory()->admin()->create();
+        $requester = User::factory()->requester()->create();
+        $previousTechnician = User::factory()->technician()->create();
+        $newTechnician = User::factory()->technician()->create();
 
-        $requester = User::factory()->create();
-
-        $previousTechnician = User::factory()->create();
-        $previousTechnician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $newTechnician = User::factory()->create();
-        $newTechnician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $repairRequest = $this->createRepairRequest($requester);
-        $repairRequest->update([
-            'assigned_to' => $previousTechnician->id,
-        ]);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->assignedTo($previousTechnician)
+            ->received()
+            ->create();
 
         $response = $this->actingAs($admin)->patch(
             route('repair-requests.assign-technician', $repairRequest),
@@ -198,21 +186,15 @@ class RepairRequestAssignmentTest extends TestCase
      */
     public function test_admin_reselecting_same_technician_does_not_append_log(): void
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['role' => 'admin'])->save();
+        $admin = User::factory()->admin()->create();
+        $requester = User::factory()->requester()->create();
+        $technician = User::factory()->technician()->create();
 
-        $requester = User::factory()->create();
-
-        $technician = User::factory()->create();
-        $technician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $repairRequest = $this->createRepairRequest($requester);
-        $repairRequest->update([
-            'assigned_to' => $technician->id,
-        ]);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->assignedTo($technician)
+            ->received()
+            ->create();
 
         $response = $this->actingAs($admin)->patch(
             route('repair-requests.assign-technician', $repairRequest),
@@ -241,28 +223,16 @@ class RepairRequestAssignmentTest extends TestCase
      */
     public function test_admin_cannot_reassign_technician_for_completed_repair_request(): void
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['role' => 'admin'])->save();
+        $admin = User::factory()->admin()->create();
+        $requester = User::factory()->requester()->create();
+        $previousTechnician = User::factory()->technician()->create();
+        $newTechnician = User::factory()->technician()->create();
 
-        $requester = User::factory()->create();
-
-        $previousTechnician = User::factory()->create();
-        $previousTechnician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $newTechnician = User::factory()->create();
-        $newTechnician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $repairRequest = $this->createRepairRequest($requester);
-        $repairRequest->update([
-            'assigned_to' => $previousTechnician->id,
-            'status' => 'completed',
-        ]);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->assignedTo($previousTechnician)
+            ->completed()
+            ->create();
 
         $response = $this->actingAs($admin)->patch(
             route('repair-requests.assign-technician', $repairRequest),
@@ -285,22 +255,15 @@ class RepairRequestAssignmentTest extends TestCase
      */
     public function test_admin_cannot_reselect_technician_for_completed_repair_request(): void
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['role' => 'admin'])->save();
+        $admin = User::factory()->admin()->create();
+        $requester = User::factory()->requester()->create();
+        $technician = User::factory()->technician()->create();
 
-        $requester = User::factory()->create();
-
-        $technician = User::factory()->create();
-        $technician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $repairRequest = $this->createRepairRequest($requester);
-        $repairRequest->update([
-            'assigned_to' => $technician->id,
-            'status' => 'completed',
-        ]);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->assignedTo($technician)
+            ->completed()
+            ->create();
 
         $response = $this->actingAs($admin)->patch(
             route('repair-requests.assign-technician', $repairRequest),
@@ -323,28 +286,16 @@ class RepairRequestAssignmentTest extends TestCase
      */
     public function test_admin_cannot_reassign_technician_for_cancelled_repair_request(): void
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['role' => 'admin'])->save();
+        $admin = User::factory()->admin()->create();
+        $requester = User::factory()->requester()->create();
+        $previousTechnician = User::factory()->technician()->create();
+        $newTechnician = User::factory()->technician()->create();
 
-        $requester = User::factory()->create();
-
-        $previousTechnician = User::factory()->create();
-        $previousTechnician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $newTechnician = User::factory()->create();
-        $newTechnician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $repairRequest = $this->createRepairRequest($requester);
-        $repairRequest->update([
-            'assigned_to' => $previousTechnician->id,
-            'status' => 'cancelled',
-        ]);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->assignedTo($previousTechnician)
+            ->cancelled()
+            ->create();
 
         $response = $this->actingAs($admin)->patch(
             route('repair-requests.assign-technician', $repairRequest),
@@ -360,21 +311,5 @@ class RepairRequestAssignmentTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('repair_logs', 0);
-    }
-
-    /**
-     * 修理依頼をテスト用に作成する。
-     */
-    private function createRepairRequest(User $requester): RepairRequest
-    {
-        return $requester->repairRequests()->create([
-            'title' => 'テスト修理依頼',
-            'description' => 'テスト用の修理依頼です。',
-            'location' => '本社1階',
-            'asset_name' => 'テスト用設備',
-            'priority' => 'normal',
-            'status' => 'received',
-            'assigned_to' => null,
-        ]);
     }
 }

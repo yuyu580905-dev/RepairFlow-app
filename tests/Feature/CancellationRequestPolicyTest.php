@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CancellationRequest;
+use App\Models\RepairRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -27,9 +28,7 @@ class CancellationRequestPolicyTest extends TestCase
      */
     public function test_inactive_admin_cannot_review_cancellation_request(): void
     {
-        $admin = User::factory()->admin()->create([
-            'is_active' => false,
-        ]);
+        $admin = User::factory()->admin()->inactive()->create();
         $cancellationRequest = $this->createCancellationRequest();
 
         $this->assertFalse($admin->can('review', $cancellationRequest));
@@ -55,20 +54,22 @@ class CancellationRequestPolicyTest extends TestCase
     {
         $requester = User::factory()->requester()->create();
 
-        $repairRequest = $requester->repairRequests()->create([
-            'title' => 'Policyテスト用の修理依頼',
-            'description' => 'Policyテスト用の修理内容です。',
-            'location' => 'テスト事務室',
-            'asset_name' => 'テスト設備',
-            'priority' => 'normal',
-            'status' => 'received',
-        ]);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->normalPriority()
+            ->create([
+                'title' => 'Policyテスト用の修理依頼',
+                'description' => 'Policyテスト用の修理内容です。',
+                'location' => 'テスト事務室',
+                'asset_name' => 'テスト設備',
+            ]);
 
-        return CancellationRequest::query()->create([
-            'repair_request_id' => $repairRequest->id,
-            'requester_id' => $requester->id,
-            'reason' => 'Policyテスト用のキャンセル理由です。',
-            'status' => 'pending',
-        ]);
+        return CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create([
+                'reason' => 'Policyテスト用のキャンセル理由です。',
+            ]);
     }
 }
