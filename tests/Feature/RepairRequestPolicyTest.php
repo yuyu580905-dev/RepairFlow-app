@@ -16,9 +16,13 @@ class RepairRequestPolicyTest extends TestCase
      */
     public function test_active_users_can_view_repair_request_list(): void
     {
-        foreach (['requester', 'technician', 'admin'] as $role) {
-            $user = User::factory()->create(['role' => $role]);
+        $users = [
+            User::factory()->requester()->create(),
+            User::factory()->technician()->create(),
+            User::factory()->admin()->create(),
+        ];
 
+        foreach ($users as $user) {
             $this->assertTrue($user->can('viewAny', RepairRequest::class));
         }
     }
@@ -28,10 +32,7 @@ class RepairRequestPolicyTest extends TestCase
      */
     public function test_inactive_user_cannot_view_repair_request_list(): void
     {
-        $user = User::factory()->create([
-            'role' => 'requester',
-            'is_active' => false,
-        ]);
+        $user = User::factory()->requester()->inactive()->create();
 
         $this->assertFalse($user->can('viewAny', RepairRequest::class));
     }
@@ -44,8 +45,17 @@ class RepairRequestPolicyTest extends TestCase
         $requester = User::factory()->requester()->create();
         $otherRequester = User::factory()->requester()->create();
 
-        $ownRequest = $this->createRepairRequest($requester);
-        $othersRequest = $this->createRepairRequest($otherRequester);
+        $ownRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->unassigned()
+            ->create();
+
+        $othersRequest = RepairRequest::factory()
+            ->for($otherRequester, 'requester')
+            ->received()
+            ->unassigned()
+            ->create();
 
         $this->assertTrue($requester->can('view', $ownRequest));
         $this->assertFalse($requester->can('view', $othersRequest));
@@ -60,14 +70,17 @@ class RepairRequestPolicyTest extends TestCase
         $technician = User::factory()->technician()->create();
         $otherTechnician = User::factory()->technician()->create();
 
-        $assignedRequest = $this->createRepairRequest(
-            $requester,
-            $technician
-        );
-        $otherRequest = $this->createRepairRequest(
-            $requester,
-            $otherTechnician
-        );
+        $assignedRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
+
+        $otherRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($otherTechnician)
+            ->create();
 
         $this->assertTrue($technician->can('view', $assignedRequest));
         $this->assertFalse($technician->can('view', $otherRequest));
@@ -81,7 +94,11 @@ class RepairRequestPolicyTest extends TestCase
         $requester = User::factory()->requester()->create();
         $admin = User::factory()->admin()->create();
 
-        $repairRequest = $this->createRepairRequest($requester);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->unassigned()
+            ->create();
 
         $this->assertTrue($admin->can('view', $repairRequest));
     }
@@ -92,11 +109,14 @@ class RepairRequestPolicyTest extends TestCase
     public function test_inactive_user_cannot_view_repair_request(): void
     {
         $requester = User::factory()->requester()->create();
-        $repairRequest = $this->createRepairRequest($requester);
 
-        $inactiveUser = User::factory()->admin()->create([
-            'is_active' => false,
-        ]);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->unassigned()
+            ->create();
+
+        $inactiveUser = User::factory()->admin()->inactive()->create();
 
         $this->assertFalse($inactiveUser->can('view', $repairRequest));
     }
@@ -109,9 +129,7 @@ class RepairRequestPolicyTest extends TestCase
         $requester = User::factory()->requester()->create();
         $technician = User::factory()->technician()->create();
         $admin = User::factory()->admin()->create();
-        $inactiveRequester = User::factory()->requester()->create([
-            'is_active' => false,
-        ]);
+        $inactiveRequester = User::factory()->requester()->inactive()->create();
 
         $this->assertTrue($requester->can('create', RepairRequest::class));
         $this->assertFalse($technician->can('create', RepairRequest::class));
@@ -125,9 +143,7 @@ class RepairRequestPolicyTest extends TestCase
     public function test_only_active_admin_can_assign_technician(): void
     {
         $admin = User::factory()->admin()->create();
-        $inactiveAdmin = User::factory()->admin()->create([
-            'is_active' => false,
-        ]);
+        $inactiveAdmin = User::factory()->admin()->inactive()->create();
         $requester = User::factory()->requester()->create();
         $technician = User::factory()->technician()->create();
 
@@ -146,14 +162,17 @@ class RepairRequestPolicyTest extends TestCase
         $technician = User::factory()->technician()->create();
         $otherTechnician = User::factory()->technician()->create();
 
-        $assignedRequest = $this->createRepairRequest(
-            $requester,
-            $technician
-        );
-        $otherRequest = $this->createRepairRequest(
-            $requester,
-            $otherTechnician
-        );
+        $assignedRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
+
+        $otherRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($otherTechnician)
+            ->create();
 
         $this->assertTrue($technician->can('updateStatus', $assignedRequest));
         $this->assertFalse($technician->can('updateStatus', $otherRequest));
@@ -169,14 +188,13 @@ class RepairRequestPolicyTest extends TestCase
         $admin = User::factory()->admin()->create();
         $otherRequester = User::factory()->requester()->create();
 
-        $repairRequest = $this->createRepairRequest(
-            $requester,
-            $technician
-        );
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
 
-        $inactiveTechnician = User::factory()->technician()->create([
-            'is_active' => false,
-        ]);
+        $inactiveTechnician = User::factory()->technician()->inactive()->create();
 
         $this->assertFalse($admin->can('updateStatus', $repairRequest));
         $this->assertFalse($otherRequester->can('updateStatus', $repairRequest));
@@ -191,8 +209,17 @@ class RepairRequestPolicyTest extends TestCase
         $requester = User::factory()->requester()->create();
         $otherRequester = User::factory()->requester()->create();
 
-        $ownRequest = $this->createRepairRequest($requester, null, 'received');
-        $othersRequest = $this->createRepairRequest($otherRequester, null, 'received');
+        $ownRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->unassigned()
+            ->create();
+
+        $othersRequest = RepairRequest::factory()
+            ->for($otherRequester, 'requester')
+            ->received()
+            ->unassigned()
+            ->create();
 
         $this->assertTrue($requester->can('requestCancellation', $ownRequest));
         $this->assertFalse($requester->can('requestCancellation', $othersRequest));
@@ -205,11 +232,11 @@ class RepairRequestPolicyTest extends TestCase
     {
         $requester = User::factory()->requester()->create();
 
-        $repairRequest = $this->createRepairRequest(
-            $requester,
-            null,
-            'in_progress'
-        );
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->inProgress()
+            ->unassigned()
+            ->create();
 
         $this->assertFalse($requester->can('requestCancellation', $repairRequest));
     }
@@ -220,35 +247,19 @@ class RepairRequestPolicyTest extends TestCase
     public function test_only_active_owner_requester_can_request_cancellation(): void
     {
         $requester = User::factory()->requester()->create();
-        $repairRequest = $this->createRepairRequest($requester);
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->unassigned()
+            ->create();
 
         $technician = User::factory()->technician()->create();
         $admin = User::factory()->admin()->create();
-        $inactiveRequester = User::factory()->requester()->create([
-            'is_active' => false,
-        ]);
+        $inactiveRequester = User::factory()->requester()->inactive()->create();
 
         $this->assertFalse($technician->can('requestCancellation', $repairRequest));
         $this->assertFalse($admin->can('requestCancellation', $repairRequest));
         $this->assertFalse($inactiveRequester->can('requestCancellation', $repairRequest));
-    }
-
-    /**
-     * テスト用の修理依頼を作成する。
-     */
-    private function createRepairRequest(
-        User $requester,
-        ?User $technician = null,
-        string $status = 'received'
-    ): RepairRequest {
-        return $requester->repairRequests()->create([
-            'title' => 'Policyテスト用の修理依頼',
-            'description' => 'Policyテスト用の修理内容です。',
-            'location' => 'テスト事務室',
-            'asset_name' => 'テスト設備',
-            'priority' => 'normal',
-            'assigned_to' => $technician?->id,
-            'status' => $status,
-        ]);
     }
 }

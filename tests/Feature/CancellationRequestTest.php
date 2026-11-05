@@ -17,7 +17,14 @@ class CancellationRequestTest extends TestCase
      */
     public function test_requester_can_submit_cancellation_request(): void
     {
-        [$requester, $repairRequest] = $this->createRepairRequest();
+        $requester = User::factory()
+            ->requester()
+            ->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create();
 
         $response = $this->actingAs($requester)->post(
             route('repair-requests.cancellation-requests.store', $repairRequest),
@@ -55,7 +62,14 @@ class CancellationRequestTest extends TestCase
      */
     public function test_cancellation_reason_is_required(): void
     {
-        [$requester, $repairRequest] = $this->createRepairRequest();
+        $requester = User::factory()
+            ->requester()
+            ->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create();
 
         $response = $this->actingAs($requester)->post(
             route('repair-requests.cancellation-requests.store', $repairRequest),
@@ -73,8 +87,14 @@ class CancellationRequestTest extends TestCase
      */
     public function test_requester_cannot_cancel_another_users_repair_request(): void
     {
-        $requester = $this->createUser('requester');
-        [, $repairRequest] = $this->createRepairRequest();
+        $requester = User::factory()
+            ->requester()
+            ->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
         $response = $this->actingAs($requester)->post(
             route('repair-requests.cancellation-requests.store', $repairRequest),
@@ -91,7 +111,14 @@ class CancellationRequestTest extends TestCase
      */
     public function test_requester_cannot_cancel_repair_that_is_not_received(): void
     {
-        [$requester, $repairRequest] = $this->createRepairRequest('in_progress');
+        $requester = User::factory()
+            ->requester()
+            ->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->inProgress()
+            ->create();
 
         $response = $this->actingAs($requester)->post(
             route('repair-requests.cancellation-requests.store', $repairRequest),
@@ -108,8 +135,14 @@ class CancellationRequestTest extends TestCase
      */
     public function test_technician_cannot_submit_cancellation_request(): void
     {
-        $technician = $this->createUser('technician');
-        [, $repairRequest] = $this->createRepairRequest();
+        $technician = User::factory()
+            ->technician()
+            ->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
         $response = $this->actingAs($technician)->post(
             route('repair-requests.cancellation-requests.store', $repairRequest),
@@ -126,7 +159,10 @@ class CancellationRequestTest extends TestCase
      */
     public function test_guest_cannot_submit_cancellation_request(): void
     {
-        [, $repairRequest] = $this->createRepairRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
         $response = $this->post(
             route('repair-requests.cancellation-requests.store', $repairRequest),
@@ -143,14 +179,21 @@ class CancellationRequestTest extends TestCase
      */
     public function test_requester_cannot_submit_duplicate_pending_cancellation_request(): void
     {
-        [$requester, $repairRequest] = $this->createRepairRequest();
+        $requester = User::factory()
+            ->requester()
+            ->create();
 
-        CancellationRequest::query()->create([
-            'repair_request_id' => $repairRequest->id,
-            'requester_id' => $requester->id,
-            'reason' => '最初の申請です。',
-            'status' => 'pending',
-        ]);
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create();
+
+        CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create([
+                'reason' => '最初の申請です。',
+            ]);
 
         $response = $this->actingAs($requester)->post(
             route('repair-requests.cancellation-requests.store', $repairRequest),
@@ -168,10 +211,21 @@ class CancellationRequestTest extends TestCase
      */
     public function test_admin_can_approve_cancellation_request(): void
     {
-        [$requester, $repairRequest, $cancellationRequest] =
-            $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
-        $admin = $this->createUser('admin');
+        $requester = $repairRequest->requester;
+
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
+
+        $admin = User::factory()
+            ->admin()
+            ->create();
 
         $response = $this->actingAs($admin)->post(
             route('cancellation-requests.review', $cancellationRequest),
@@ -219,10 +273,19 @@ class CancellationRequestTest extends TestCase
      */
     public function test_admin_can_reject_cancellation_request(): void
     {
-        [, $repairRequest, $cancellationRequest] =
-            $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
-        $admin = $this->createUser('admin');
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
+
+        $admin = User::factory()
+            ->admin()
+            ->create();
 
         $response = $this->actingAs($admin)->post(
             route('cancellation-requests.review', $cancellationRequest),
@@ -263,9 +326,19 @@ class CancellationRequestTest extends TestCase
      */
     public function test_admin_cannot_reject_cancellation_request_without_review_comment(): void
     {
-        [,, $cancellationRequest] = $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
-        $admin = $this->createUser('admin');
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
+
+        $admin = User::factory()
+            ->admin()
+            ->create();
 
         $response = $this->actingAs($admin)->post(
             route('cancellation-requests.review', $cancellationRequest),
@@ -292,10 +365,19 @@ class CancellationRequestTest extends TestCase
      */
     public function test_admin_can_approve_cancellation_request_without_review_comment(): void
     {
-        [, $repairRequest, $cancellationRequest] =
-            $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
-        $admin = $this->createUser('admin');
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
+
+        $admin = User::factory()
+            ->admin()
+            ->create();
 
         $response = $this->actingAs($admin)->post(
             route('cancellation-requests.review', $cancellationRequest),
@@ -324,10 +406,21 @@ class CancellationRequestTest extends TestCase
      */
     public function test_non_admin_cannot_review_cancellation_request(): void
     {
-        [,, $cancellationRequest] = $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
+
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
 
         foreach (['requester', 'technician'] as $role) {
-            $user = $this->createUser($role);
+            $user = match ($role) {
+                'requester' => User::factory()->requester()->create(),
+                'technician' => User::factory()->technician()->create(),
+            };
 
             $response = $this->actingAs($user)->post(
                 route('cancellation-requests.review', $cancellationRequest),
@@ -354,9 +447,19 @@ class CancellationRequestTest extends TestCase
      */
     public function test_invalid_review_decision_is_rejected(): void
     {
-        [,, $cancellationRequest] = $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
-        $admin = $this->createUser('admin');
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
+
+        $admin = User::factory()
+            ->admin()
+            ->create();
 
         $response = $this->actingAs($admin)->post(
             route('cancellation-requests.review', $cancellationRequest),
@@ -378,10 +481,19 @@ class CancellationRequestTest extends TestCase
      */
     public function test_reviewed_cancellation_request_cannot_be_reviewed_again(): void
     {
-        [$requester, $repairRequest, $cancellationRequest] =
-            $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
-        $admin = $this->createUser('admin');
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
+
+        $admin = User::factory()
+            ->admin()
+            ->create();
 
         $cancellationRequest->update([
             'status' => 'rejected',
@@ -409,10 +521,21 @@ class CancellationRequestTest extends TestCase
      */
     public function test_requester_can_resubmit_after_cancellation_request_is_rejected(): void
     {
-        [$requester, $repairRequest, $cancellationRequest] =
-            $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
-        $admin = $this->createUser('admin');
+        $requester = $repairRequest->requester;
+
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
+
+        $admin = User::factory()
+            ->admin()
+            ->create();
 
         $cancellationRequest->update([
             'status' => 'rejected',
@@ -447,8 +570,14 @@ class CancellationRequestTest extends TestCase
      */
     public function test_admin_cannot_submit_cancellation_request(): void
     {
-        $admin = $this->createUser('admin');
-        [, $repairRequest] = $this->createRepairRequest();
+        $admin = User::factory()
+            ->admin()
+            ->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
         $response = $this->actingAs($admin)->post(
             route('repair-requests.cancellation-requests.store', $repairRequest),
@@ -465,7 +594,14 @@ class CancellationRequestTest extends TestCase
      */
     public function test_inactive_requester_cannot_submit_cancellation_request(): void
     {
-        [$requester, $repairRequest] = $this->createRepairRequest();
+        $requester = User::factory()
+            ->requester()
+            ->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create();
 
         $requester->forceFill(['is_active' => false])->save();
 
@@ -484,7 +620,14 @@ class CancellationRequestTest extends TestCase
      */
     public function test_cancellation_reason_cannot_exceed_2000_characters(): void
     {
-        [$requester, $repairRequest] = $this->createRepairRequest();
+        $requester = User::factory()
+            ->requester()
+            ->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create();
 
         $response = $this->actingAs($requester)->post(
             route('repair-requests.cancellation-requests.store', $repairRequest),
@@ -501,9 +644,20 @@ class CancellationRequestTest extends TestCase
      */
     public function test_inactive_admin_cannot_review_cancellation_request(): void
     {
-        [,, $cancellationRequest] = $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
-        $admin = $this->createUser('admin');
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
+
+        $admin = User::factory()
+            ->admin()
+            ->create();
+
         $admin->forceFill(['is_active' => false])->save();
 
         $response = $this->actingAs($admin)->post(
@@ -527,9 +681,19 @@ class CancellationRequestTest extends TestCase
      */
     public function test_review_comment_cannot_exceed_2000_characters(): void
     {
-        [,, $cancellationRequest] = $this->createPendingCancellationRequest();
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->received()
+            ->create();
 
-        $admin = $this->createUser('admin');
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create();
+
+        $admin = User::factory()
+            ->admin()
+            ->create();
 
         $response = $this->actingAs($admin)->post(
             route('cancellation-requests.review', $cancellationRequest),
@@ -555,16 +719,21 @@ class CancellationRequestTest extends TestCase
      */
     public function test_admin_cannot_approve_cancellation_for_non_received_repair(): void
     {
-        [$requester, $repairRequest] = $this->createRepairRequest('in_progress');
+        $repairRequest = RepairRequest::factory()
+            ->for(User::factory()->requester(), 'requester')
+            ->inProgress()
+            ->create();
 
-        $cancellationRequest = CancellationRequest::query()->create([
-            'repair_request_id' => $repairRequest->id,
-            'requester_id' => $requester->id,
-            'reason' => 'テスト用のキャンセル理由です。',
-            'status' => 'pending',
-        ]);
+        $cancellationRequest = CancellationRequest::factory()
+            ->for($repairRequest, 'repairRequest')
+            ->pending()
+            ->create([
+                'reason' => 'テスト用のキャンセル理由です。',
+            ]);
 
-        $admin = $this->createUser('admin');
+        $admin = User::factory()
+            ->admin()
+            ->create();
 
         $response = $this->actingAs($admin)->post(
             route('cancellation-requests.review', $cancellationRequest),
@@ -588,60 +757,5 @@ class CancellationRequestTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('repair_logs', 0);
-    }
-
-    /**
-     * テスト用の修理依頼を作成する。
-     *
-     * @return array{0: User, 1: RepairRequest}
-     */
-    private function createRepairRequest(string $status = 'received'): array
-    {
-        $requester = $this->createUser('requester');
-
-        $repairRequest = $requester->repairRequests()->create([
-            'title' => 'テスト修理依頼',
-            'description' => 'テスト用の修理依頼です。',
-            'location' => '本社1階',
-            'asset_name' => 'テスト用設備',
-            'priority' => 'normal',
-            'status' => $status,
-        ]);
-
-        return [$requester, $repairRequest];
-    }
-
-    /**
-     * 審査中のキャンセル申請を作成する。
-     *
-     * @return array{0: User, 1: RepairRequest, 2: CancellationRequest}
-     */
-    private function createPendingCancellationRequest(): array
-    {
-        [$requester, $repairRequest] = $this->createRepairRequest();
-
-        $cancellationRequest = CancellationRequest::query()->create([
-            'repair_request_id' => $repairRequest->id,
-            'requester_id' => $requester->id,
-            'reason' => 'テスト用のキャンセル理由です。',
-            'status' => 'pending',
-        ]);
-
-        return [$requester, $repairRequest, $cancellationRequest];
-    }
-
-    /**
-     * 指定ロールのテストユーザーを作成する。
-     */
-    private function createUser(string $role): User
-    {
-        $user = User::factory()->create();
-
-        $user->forceFill([
-            'role' => $role,
-            'is_active' => true,
-        ])->save();
-
-        return $user;
     }
 }

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 class UserSeeder extends Seeder
 {
     /**
-     * テスト用ユーザーを作成する。
+     * 開発・デモ用ユーザーを作成する。
      */
     public function run(): void
     {
@@ -19,6 +19,16 @@ class UserSeeder extends Seeder
             [
                 'name' => 'テスト依頼者',
                 'email' => 'requester@example.com',
+                'role' => 'requester',
+            ],
+            [
+                'name' => 'テスト依頼者2',
+                'email' => 'requester2@example.com',
+                'role' => 'requester',
+            ],
+            [
+                'name' => 'テスト依頼者3',
+                'email' => 'requester3@example.com',
                 'role' => 'requester',
             ],
             [
@@ -38,17 +48,18 @@ class UserSeeder extends Seeder
             ],
         ];
 
-        foreach ($users as $user) {
-            User::updateOrCreate(
-                ['email' => $user['email']],
-                [
-                    'name' => $user['name'],
-                    'role' => $user['role'],
-                    'is_active' => true,
-                    'password' => $password,
-                    'email_verified_at' => now(),
-                ],
-            );
+        foreach ($users as $userData) {
+            $user = User::query()->firstOrNew([
+                'email' => $userData['email'],
+            ]);
+
+            $user->forceFill([
+                'name' => $userData['name'],
+                'role' => $userData['role'],
+                'is_active' => true,
+                'password' => $password,
+                'email_verified_at' => now(),
+            ])->save();
         }
     }
 }

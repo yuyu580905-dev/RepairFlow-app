@@ -16,14 +16,18 @@ class RepairRequestShowTest extends TestCase
      */
     public function test_requester_can_view_own_repair_request(): void
     {
-        $requester = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        $requester = User::factory()->requester()->create();
 
-        $repairRequest = $this->createRepairRequest(
-            $requester,
-            '自分の修理依頼'
-        );
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->normalPriority()
+            ->create([
+                'title' => '自分の修理依頼',
+                'description' => 'テスト用の修理内容です。',
+                'location' => 'テスト事務室',
+                'asset_name' => 'テスト設備',
+            ]);
 
         $response = $this->actingAs($requester)->get(
             route('repair-requests.show', $repairRequest)
@@ -41,18 +45,15 @@ class RepairRequestShowTest extends TestCase
      */
     public function test_requester_cannot_view_others_repair_request(): void
     {
-        $owner = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        $owner = User::factory()->requester()->create();
+        $otherRequester = User::factory()->requester()->create();
 
-        $otherRequester = User::factory()->create([
-            'role' => 'requester',
-        ]);
-
-        $repairRequest = $this->createRepairRequest(
-            $owner,
-            '他人の修理依頼'
-        );
+        $repairRequest = RepairRequest::factory()
+            ->for($owner, 'requester')
+            ->received()
+            ->create([
+                'title' => '他人の修理依頼',
+            ]);
 
         $response = $this->actingAs($otherRequester)->get(
             route('repair-requests.show', $repairRequest)
@@ -66,19 +67,16 @@ class RepairRequestShowTest extends TestCase
      */
     public function test_technician_can_view_assigned_repair_request(): void
     {
-        $requester = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        $requester = User::factory()->requester()->create();
+        $technician = User::factory()->technician()->create();
 
-        $technician = User::factory()->create([
-            'role' => 'technician',
-        ]);
-
-        $repairRequest = $this->createRepairRequest(
-            $requester,
-            '担当中の修理依頼',
-            $technician
-        );
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->assignedTo($technician)
+            ->received()
+            ->create([
+                'title' => '担当中の修理依頼',
+            ]);
 
         $response = $this->actingAs($technician)->get(
             route('repair-requests.show', $repairRequest)
@@ -95,18 +93,15 @@ class RepairRequestShowTest extends TestCase
      */
     public function test_technician_cannot_view_unassigned_repair_request(): void
     {
-        $requester = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        $requester = User::factory()->requester()->create();
+        $technician = User::factory()->technician()->create();
 
-        $technician = User::factory()->create([
-            'role' => 'technician',
-        ]);
-
-        $repairRequest = $this->createRepairRequest(
-            $requester,
-            '未割り当ての修理依頼'
-        );
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create([
+                'title' => '未割り当ての修理依頼',
+            ]);
 
         $response = $this->actingAs($technician)->get(
             route('repair-requests.show', $repairRequest)
@@ -120,18 +115,15 @@ class RepairRequestShowTest extends TestCase
      */
     public function test_admin_can_view_any_repair_request(): void
     {
-        $requester = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        $requester = User::factory()->requester()->create();
+        $admin = User::factory()->admin()->create();
 
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
-
-        $repairRequest = $this->createRepairRequest(
-            $requester,
-            '管理者が確認する修理依頼'
-        );
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create([
+                'title' => '管理者が確認する修理依頼',
+            ]);
 
         $response = $this->actingAs($admin)->get(
             route('repair-requests.show', $repairRequest)
@@ -147,38 +139,19 @@ class RepairRequestShowTest extends TestCase
      */
     public function test_guest_cannot_access_repair_request_detail(): void
     {
-        $requester = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        $requester = User::factory()->requester()->create();
 
-        $repairRequest = $this->createRepairRequest(
-            $requester,
-            'ログイン必須の修理依頼'
-        );
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->create([
+                'title' => 'ログイン必須の修理依頼',
+            ]);
 
         $response = $this->get(
             route('repair-requests.show', $repairRequest)
         );
 
         $response->assertRedirect(route('login'));
-    }
-
-    /**
-     * 修理依頼をテスト用に作成する。
-     */
-    private function createRepairRequest(
-        User $requester,
-        string $title,
-        ?User $technician = null
-    ): RepairRequest {
-        return $requester->repairRequests()->create([
-            'title' => $title,
-            'description' => 'テスト用の修理内容です。',
-            'location' => 'テスト事務室',
-            'asset_name' => 'テスト設備',
-            'priority' => 'normal',
-            'assigned_to' => $technician?->id,
-            'status' => 'received',
-        ]);
     }
 }

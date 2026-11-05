@@ -16,7 +16,14 @@ class RepairRequestStatusUpdateTest extends TestCase
      */
     public function test_assigned_technician_can_start_repair_and_append_log(): void
     {
-        [$technician, $repairRequest] = $this->createAssignedRepairRequest();
+        $technician = User::factory()->technician()->create();
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
 
         $response = $this->actingAs($technician)->patch(
             route('repair-requests.update-status', $repairRequest),
@@ -50,7 +57,14 @@ class RepairRequestStatusUpdateTest extends TestCase
      */
     public function test_reason_is_required_when_putting_repair_on_hold(): void
     {
-        [$technician, $repairRequest] = $this->createAssignedRepairRequest();
+        $technician = User::factory()->technician()->create();
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
 
         $response = $this->actingAs($technician)->patch(
             route('repair-requests.update-status', $repairRequest),
@@ -75,7 +89,14 @@ class RepairRequestStatusUpdateTest extends TestCase
      */
     public function test_assigned_technician_can_put_repair_on_hold_with_reason(): void
     {
-        [$technician, $repairRequest] = $this->createAssignedRepairRequest();
+        $technician = User::factory()->technician()->create();
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
 
         $response = $this->actingAs($technician)->patch(
             route('repair-requests.update-status', $repairRequest),
@@ -109,9 +130,14 @@ class RepairRequestStatusUpdateTest extends TestCase
      */
     public function test_assigned_technician_can_complete_in_progress_repair(): void
     {
-        [$technician, $repairRequest] = $this->createAssignedRepairRequest(
-            'in_progress'
-        );
+        $technician = User::factory()->technician()->create();
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->inProgress()
+            ->assignedTo($technician)
+            ->create();
 
         $response = $this->actingAs($technician)->patch(
             route('repair-requests.update-status', $repairRequest),
@@ -141,9 +167,14 @@ class RepairRequestStatusUpdateTest extends TestCase
      */
     public function test_assigned_technician_can_resume_on_hold_repair(): void
     {
-        [$technician, $repairRequest] = $this->createAssignedRepairRequest(
-            'on_hold'
-        );
+        $technician = User::factory()->technician()->create();
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->onHold()
+            ->assignedTo($technician)
+            ->create();
 
         $response = $this->actingAs($technician)->patch(
             route('repair-requests.update-status', $repairRequest),
@@ -177,9 +208,14 @@ class RepairRequestStatusUpdateTest extends TestCase
      */
     public function test_completed_repair_cannot_transition_to_another_status(): void
     {
-        [$technician, $repairRequest] = $this->createAssignedRepairRequest(
-            'completed'
-        );
+        $technician = User::factory()->technician()->create();
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->completed()
+            ->assignedTo($technician)
+            ->create();
 
         $response = $this->actingAs($technician)->patch(
             route('repair-requests.update-status', $repairRequest),
@@ -204,7 +240,14 @@ class RepairRequestStatusUpdateTest extends TestCase
      */
     public function test_technician_cannot_set_cancelled_status_directly(): void
     {
-        [$technician, $repairRequest] = $this->createAssignedRepairRequest();
+        $technician = User::factory()->technician()->create();
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
 
         $response = $this->actingAs($technician)->patch(
             route('repair-requests.update-status', $repairRequest),
@@ -229,13 +272,15 @@ class RepairRequestStatusUpdateTest extends TestCase
      */
     public function test_unassigned_technician_cannot_update_repair_status(): void
     {
-        [$assignedTechnician, $repairRequest] = $this->createAssignedRepairRequest();
+        $assignedTechnician = User::factory()->technician()->create();
+        $otherTechnician = User::factory()->technician()->create();
+        $requester = User::factory()->requester()->create();
 
-        $otherTechnician = User::factory()->create();
-        $otherTechnician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($assignedTechnician)
+            ->create();
 
         $response = $this->actingAs($otherTechnician)->patch(
             route('repair-requests.update-status', $repairRequest),
@@ -248,34 +293,5 @@ class RepairRequestStatusUpdateTest extends TestCase
             'id' => $repairRequest->id,
             'status' => 'received',
         ]);
-    }
-
-    /**
-     * 担当技術者と修理依頼をテスト用に作成する。
-     *
-     * @return array{0: User, 1: RepairRequest}
-     */
-    private function createAssignedRepairRequest(
-        string $status = 'received'
-    ): array {
-        $requester = User::factory()->create();
-
-        $technician = User::factory()->create();
-        $technician->forceFill([
-            'role' => 'technician',
-            'is_active' => true,
-        ])->save();
-
-        $repairRequest = $requester->repairRequests()->create([
-            'title' => 'テスト修理依頼',
-            'description' => 'テスト用の修理依頼です。',
-            'location' => '本社1階',
-            'asset_name' => 'テスト用設備',
-            'priority' => 'normal',
-            'status' => $status,
-            'assigned_to' => $technician->id,
-        ]);
-
-        return [$technician, $repairRequest];
     }
 }

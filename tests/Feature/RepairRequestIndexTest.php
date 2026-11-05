@@ -16,16 +16,24 @@ class RepairRequestIndexTest extends TestCase
      */
     public function test_requester_sees_only_own_repair_requests(): void
     {
-        $requester = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        $requester = User::factory()->requester()->create();
+        $otherRequester = User::factory()->requester()->create();
 
-        $otherRequester = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->normalPriority()
+            ->create([
+                'title' => '自分の修理依頼',
+            ]);
 
-        $this->createRepairRequest($requester, '自分の修理依頼');
-        $this->createRepairRequest($otherRequester, '他人の修理依頼');
+        RepairRequest::factory()
+            ->for($otherRequester, 'requester')
+            ->received()
+            ->normalPriority()
+            ->create([
+                'title' => '他人の修理依頼',
+            ]);
 
         $response = $this->actingAs($requester)->get(
             route('repair-requests.index')
@@ -42,34 +50,35 @@ class RepairRequestIndexTest extends TestCase
      */
     public function test_technician_sees_only_assigned_repair_requests(): void
     {
-        $requester = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        $requester = User::factory()->requester()->create();
+        $technician = User::factory()->technician()->create();
+        $otherTechnician = User::factory()->technician()->create();
 
-        $technician = User::factory()->create([
-            'role' => 'technician',
-        ]);
+        RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->assignedTo($technician)
+            ->received()
+            ->normalPriority()
+            ->create([
+                'title' => '自分の担当案件',
+            ]);
 
-        $otherTechnician = User::factory()->create([
-            'role' => 'technician',
-        ]);
+        RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->assignedTo($otherTechnician)
+            ->received()
+            ->normalPriority()
+            ->create([
+                'title' => '他人の担当案件',
+            ]);
 
-        $this->createRepairRequest(
-            $requester,
-            '自分の担当案件',
-            $technician
-        );
-
-        $this->createRepairRequest(
-            $requester,
-            '他人の担当案件',
-            $otherTechnician
-        );
-
-        $this->createRepairRequest(
-            $requester,
-            '未割り当ての案件'
-        );
+        RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->normalPriority()
+            ->create([
+                'title' => '未割り当ての案件',
+            ]);
 
         $response = $this->actingAs($technician)->get(
             route('repair-requests.index')
@@ -87,20 +96,27 @@ class RepairRequestIndexTest extends TestCase
      */
     public function test_admin_sees_all_repair_requests(): void
     {
-        $requester = User::factory()->create([
-            'role' => 'requester',
-        ]);
+        $requester = User::factory()->requester()->create();
+        $technician = User::factory()->technician()->create();
 
-        $technician = User::factory()->create([
-            'role' => 'technician',
-        ]);
+        RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->normalPriority()
+            ->create([
+                'title' => '依頼A',
+            ]);
 
-        $this->createRepairRequest($requester, '依頼A');
-        $this->createRepairRequest($requester, '依頼B', $technician);
+        RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->assignedTo($technician)
+            ->received()
+            ->normalPriority()
+            ->create([
+                'title' => '依頼B',
+            ]);
 
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = User::factory()->admin()->create();
 
         $response = $this->actingAs($admin)->get(
             route('repair-requests.index')
@@ -120,24 +136,5 @@ class RepairRequestIndexTest extends TestCase
         $response = $this->get(route('repair-requests.index'));
 
         $response->assertRedirect(route('login'));
-    }
-
-    /**
-     * 修理依頼をテスト用に作成する。
-     */
-    private function createRepairRequest(
-        User $requester,
-        string $title,
-        ?User $technician = null
-    ): RepairRequest {
-        return $requester->repairRequests()->create([
-            'title' => $title,
-            'description' => 'テスト用の修理内容です。',
-            'location' => 'テスト事務室',
-            'asset_name' => 'テスト設備',
-            'priority' => 'normal',
-            'assigned_to' => $technician?->id,
-            'status' => 'received',
-        ]);
     }
 }

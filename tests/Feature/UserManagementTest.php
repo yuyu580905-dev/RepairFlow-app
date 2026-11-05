@@ -711,7 +711,13 @@ class UserManagementTest extends TestCase
             'is_active' => true,
         ]);
 
-        $repairRequest = $this->createAssignedRepairRequest($technician);
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
 
         $this->actingAs($admin)
             ->put(route('users.update', $technician), [
@@ -749,7 +755,13 @@ class UserManagementTest extends TestCase
             'is_active' => true,
         ]);
 
-        $repairRequest = $this->createAssignedRepairRequest($technician);
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
 
         $this->actingAs($admin)
             ->put(route('users.update', $technician), [
@@ -787,7 +799,13 @@ class UserManagementTest extends TestCase
             'is_active' => true,
         ]);
 
-        $repairRequest = $this->createAssignedRepairRequest($technician);
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
 
         $this->actingAs($admin)
             ->put(route('users.update', $technician), [
@@ -828,10 +846,13 @@ class UserManagementTest extends TestCase
             'is_active' => true,
         ]);
 
-        $repairRequest = $this->createAssignedRepairRequest(
-            $technician,
-            'completed'
-        );
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->completed()
+            ->assignedTo($technician)
+            ->create();
 
         $this->actingAs($admin)
             ->put(route('users.update', $technician), [
@@ -870,10 +891,13 @@ class UserManagementTest extends TestCase
             'is_active' => true,
         ]);
 
-        $repairRequest = $this->createAssignedRepairRequest(
-            $technician,
-            'cancelled'
-        );
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->cancelled()
+            ->assignedTo($technician)
+            ->create();
 
         $this->actingAs($admin)
             ->put(route('users.update', $technician), [
@@ -943,7 +967,13 @@ class UserManagementTest extends TestCase
             'is_active' => true,
         ]);
 
-        $repairRequest = $this->createAssignedRepairRequest($technician);
+        $requester = User::factory()->requester()->create();
+
+        $repairRequest = RepairRequest::factory()
+            ->for($requester, 'requester')
+            ->received()
+            ->assignedTo($technician)
+            ->create();
 
         $this->actingAs($admin)
             ->put(route('users.update', $technician), [
@@ -965,30 +995,6 @@ class UserManagementTest extends TestCase
         $this->assertDatabaseHas('repair_requests', [
             'id' => $repairRequest->id,
             'assigned_to' => $technician->id,
-        ]);
-    }
-
-    /**
-     * 指定した技術者に修理依頼を割り当てる。
-     */
-    private function createAssignedRepairRequest(
-        User $technician,
-        string $status = 'received'
-    ): RepairRequest {
-        $requester = User::factory()->create([
-            'role' => 'requester',
-            'is_active' => true,
-        ]);
-
-        return RepairRequest::create([
-            'requester_id' => $requester->id,
-            'assigned_to' => $technician->id,
-            'title' => 'テスト修理依頼',
-            'description' => 'テスト用の修理依頼です。',
-            'location' => '東京都',
-            'asset_name' => 'テスト機器',
-            'priority' => 'normal',
-            'status' => $status,
         ]);
     }
 }
