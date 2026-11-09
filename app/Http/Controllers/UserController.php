@@ -126,7 +126,7 @@ class UserController extends Controller
                 && $activeAdminIds->count() <= 1
             ) {
                 throw ValidationException::withMessages([
-                    'role' => '最後の有効な管理者は変更できません。',
+                    'role' => '最後の有効な管理者は無効化できません。',
                 ]);
             }
 
