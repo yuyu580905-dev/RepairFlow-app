@@ -59,6 +59,19 @@ class RepairRequestController extends Controller
             'cancellationRequests.reviewer',
         ]);
 
+        // キャンセル申請に、同一修理依頼内での申請回数を割り当てる。
+        $cancellationRequestNumbers = $repairRequest->cancellationRequests
+            ->sortBy([
+                ['created_at', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values()
+            ->mapWithKeys(
+                fn ($cancellationRequest, $index): array => [
+                    $cancellationRequest->id => $index + 1,
+                ]
+            );
+
         $technicians = User::query()
             ->where('role', 'technician')
             ->where('is_active', true)
@@ -68,6 +81,7 @@ class RepairRequestController extends Controller
         return view('repair-requests.show', [
             'repairRequest' => $repairRequest,
             'technicians' => $technicians,
+            'cancellationRequestNumbers' => $cancellationRequestNumbers,
         ]);
     }
 
