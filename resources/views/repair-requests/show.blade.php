@@ -309,7 +309,7 @@
                                     <article class="rounded-xl border border-slate-200 p-4 sm:p-5">
                                         <div class="mb-5 flex flex-wrap items-center justify-between gap-2">
                                             <h3 class="font-bold text-slate-900">
-                                                キャンセル申請 #{{ $cancellationRequest->id }}
+                                                キャンセル申請 {{ $cancellationRequestNumbers[$cancellationRequest->id] }}回目
                                             </h3>
 
                                             <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
@@ -425,7 +425,7 @@
                                             <li class="rounded-xl border border-slate-200 p-4 sm:p-5">
                                                 <div class="flex flex-wrap items-center justify-between gap-3">
                                                     <h3 class="font-bold text-slate-900">
-                                                        キャンセル申請 #{{ $cancellationRequest->id }}
+                                                        キャンセル申請 {{ $cancellationRequestNumbers[$cancellationRequest->id] }}回目
                                                     </h3>
 
                                                     <span @class([
@@ -677,8 +677,8 @@
                                     aria-describedby="message-error"
                                     class="mt-2 block w-full resize-y rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     :placeholder="selectedStatus === 'on_hold'
-                                                                            ? '例：交換部品の到着待ち、追加情報の確認中など'
-                                                                            : '作業内容や引き継ぎ事項など'">{{ old('message') }}</textarea>
+                                                    ? '例：交換部品の到着待ち、追加情報の確認中など'
+                                                    : '作業内容や引き継ぎ事項など'">{{ old('message') }}</textarea>
 
                                 @error('message')
                                     <p id="message-error" class="mt-2 text-sm text-red-600" role="alert">
@@ -812,15 +812,13 @@
 
 
             <div class="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row">
-                <a href="{{ route('repair-requests.index') }}"
-                    class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3
-                                                                                                                                                                                                                            font-semibold text-white transition hover:bg-blue-700">
+                <a href="{{ route('repair-requests.index') }}" class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3
+                                font-semibold text-white transition hover:bg-blue-700">
                     一覧へ戻る
                 </a>
 
-                <a href="{{ route('dashboard') }}"
-                    class="inline-flex items-center justify-center rounded-lg bg-slate-100 px-5 py-3
-                                                                                                                                                                                                                            font-semibold text-slate-700 transition hover:bg-slate-200">
+                <a href="{{ route('dashboard') }}" class="inline-flex items-center justify-center rounded-lg bg-slate-100 px-5 py-3
+                                font-semibold text-slate-700 transition hover:bg-slate-200">
                     ダッシュボードへ戻る
                 </a>
             </div>

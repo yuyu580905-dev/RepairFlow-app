@@ -75,6 +75,22 @@ class RepairRequestSeeder extends Seeder
 
         $createdAt = $createdAt->addHour();
 
+        $this->createRepairRequest(
+            $requester3,
+            null,
+            'received',
+            'normal',
+            [
+                'title' => '会議室のプロジェクターが映らない',
+                'description' => '会議室のプロジェクターに電源は入りますが、映像が表示されません。',
+                'location' => '本社4階',
+                'asset_name' => 'プロジェクター',
+            ],
+            $createdAt,
+        );
+
+        $createdAt = $createdAt->addHour();
+
         // 対応中
         $this->createRepairRequest(
             $requester3,
