@@ -5,6 +5,8 @@
 
 @section('content')
     <div class="mx-auto max-w-3xl">
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+
         {{-- ページ見出し --}}
         <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -30,7 +32,6 @@
         </div>
 
         {{-- 編集フォーム --}}
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
             {{-- バリデーションエラー --}}
             @if ($errors->any())
                 <div role="alert" class="mb-8 rounded-xl border border-red-200 bg-red-50 p-5">
