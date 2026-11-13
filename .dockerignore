@@ -1,0 +1,12 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+
+/vendor
+/node_modules
+/public/build
+
+.DS_Store
+.phpunit.cache
