@@ -51,6 +51,30 @@ class UpdateUserRequest extends FormRequest
     }
 
     /**
+     * バリデーションエラーメッセージを定義する。
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => '名前を入力してください。',
+            'name.string' => '名前は文字列で入力してください。',
+            'name.max' => '名前は255文字以内で入力してください。',
+            'email.required' => 'メールアドレスを入力してください。',
+            'email.string' => 'メールアドレスは文字列で入力してください。',
+            'email.email' => 'メールアドレスはメール形式で入力してください。',
+            'email.max' => 'メールアドレスは255文字以内で入力してください。',
+            'email.unique' => 'このメールアドレスはすでに使用されています。',
+            'role.required' => 'ユーザー種別を選択してください。',
+            'role.string' => 'ユーザー種別の指定が正しくありません。',
+            'role.in' => 'ユーザー種別の選択が正しくありません。',
+            'is_active.required' => 'アカウント状態を指定してください。',
+            'is_active.boolean' => 'アカウント状態の指定が正しくありません。',
+        ];
+    }
+
+    /**
      * エラーメッセージの属性名を定義する。
      *
      * @return array<string, string>
